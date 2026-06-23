@@ -1,0 +1,26 @@
+# Netlify configuration for the Leave Assistant.
+#
+# - The static frontend lives in app/ (published as the site root).
+# - The /api/chat backend is a serverless function (netlify/functions/chat.js).
+# - No build step: it's static HTML + a Node function. Netlify installs deps
+#   from package.json automatically.
+
+[build]
+  publish = "app"
+  functions = "netlify/functions"
+  # No bundling/build needed for the static frontend.
+  command = "echo 'No build step — static frontend + functions'"
+
+[functions]
+  # esbuild bundles each function and its imported modules.
+  node_bundler = "esbuild"
+  # Cloud SDK is only used in SF_MODE=real (BTP), never on Netlify — keep it
+  # out of the bundle. It is required indirectly so this is just a safety net.
+  external_node_modules = ["@sap-cloud-sdk/http-client", "@sap-cloud-sdk/connectivity", "@sap/cds"]
+
+# Frontend calls /api/chat; route it to the function transparently.
+[[redirects]]
+  from = "/api/chat"
+  to = "/.netlify/functions/chat"
+  status = 200
+  force = true

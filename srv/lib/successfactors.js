@@ -87,7 +87,10 @@ async function sandboxAccounts(userId) {
 // ---- "real" mode (real tenant via BTP Destination) -------------------------
 
 async function realAccounts(userId) {
-  const { executeHttpRequest } = require('@sap-cloud-sdk/http-client')
+  // Indirect require so bundlers (e.g. Netlify/esbuild) don't pull the heavy
+  // Cloud SDK into builds that only ever use mock/sandbox mode.
+  const cloudSdkPkg = '@sap-cloud-sdk/http-client'
+  const { executeHttpRequest } = require(cloudSdkPkg)
   const destination = { destinationName: process.env.SF_DESTINATION || 'SF_TIMEOFF' }
 
   // Same model as the sandbox — real tenants expose the identical entities.
