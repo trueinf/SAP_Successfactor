@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Leave Assistant</title>
+
+  <!-- UI5 Web Components global config: theme + language -->
+  <script data-ui5-config type="application/json">
+    { "theme": "sap_horizon", "language": "en" }
+  </script>
+
+  <!-- Load UI5 Web Components (official SAP library) from CDN via esm.sh.
+       esm.sh resolves all transitive dependencies, so no build step is needed. -->
+  <script type="module">
+    const V = "@2";                         // UI5 Web Components v2.x
+    const WC  = (m) => import(`https://esm.sh/@ui5/webcomponents${V}/dist/${m}.js`);
+    const FIO = (m) => import(`https://esm.sh/@ui5/webcomponents-fiori${V}/dist/${m}.js`);
+    const ICO = (m) => import(`https://esm.sh/@ui5/webcomponents-icons${V}/dist/${m}.js`);
+
+    // Components + icons used on this page
+    await Promise.all([
+      FIO("ShellBar"),
+      WC("Card"), WC("CardHeader"),
+      WC("Input"), WC("Button"), WC("Avatar"), WC("Tag"), WC("BusyIndicator"),
+      ICO("search"), ICO("sys-help"), ICO("bell"), ICO("employee"),
+    ]);
+
+    // Signal that components are ready (used to hide the loading state)
+    document.documentElement.classList.add("ui5-ready");
+  </script>
+
+  <style>
+    html, body { height: 100%; margin: 0; }
+    body {
+      font-family: "72", "72full", -apple-system, "Segoe UI", Arial, sans-serif;
+      background: var(--sapBackgroundColor, #f5f6f7);
+      display: flex; flex-direction: column;
+    }
+    /* hide app until UI5 components are defined, to avoid a flash of raw markup */
+    #app { visibility: hidden; flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    html.ui5-ready #app { visibility: visible; }
+    #loading {
+      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+      color: #556b82; font-family: "72", "Segoe UI", Arial, sans-serif; gap: .5rem;
+    }
+    html.ui5-ready #loading { display: none; }
+
+    .page { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 1.25rem; }
+    .chat-card { width: min(720px, 100%); height: 100%; display: flex; flex-direction: column; }
+    /* let the card body flex so the log scrolls */
+    .chat-card::part(content) { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+
+    #log { flex: 1; overflow-y: auto; padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
+    .row { display: flex; }
+    .row.me { justify-content: flex-end; }
+    .bubble {
+      max-width: 78%; padding: .625rem .875rem; line-height: 1.45; white-space: pre-wrap;
+      font-size: .875rem; border-radius: .75rem;
+    }
+    .bubble.me  { background: var(--sapButton_Emphasized_Background, #0070f2); color: #fff; border-bottom-right-radius: .25rem; }
+    .bubble.bot { background: #f0f3f6; color: var(--sapTextColor, #1d2d3e); border: 1px solid #e3e7eb; border-bottom-left-radius: .25rem; }
+
+    .typing { display: inline-flex; gap: .25rem; align-items: center; }
+    .typing span { width: .4rem; height: .4rem; border-radius: 50%; background: #9aa8b5; animation: blink 1.2s infinite both; }
+    .typing span:nth-child(2){ animation-delay:.2s } .typing span:nth-child(3){ animation-delay:.4s }
+    @keyframes blink { 0%,80%,100%{opacity:.25} 40%{opacity:1} }
+
+    .chips { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0 1.25rem .5rem; }
+    .composer { display: flex; gap: .5rem; padding: .75rem 1.25rem; align-items: center; }
+    .composer ui5-input { flex: 1; }
+
+    .sap-logo { height: 1.5rem; width: auto; }
+  </style>
+</head>
+<body>
+  <div id="loading">Loading SAP Fiori components…</div>
+
+  <div id="app">
+    <!-- Real UI5 ShellBar -->
+    <ui5-shellbar id="shell"
+      primary-title="Leave Assistant"
+      secondary-title="SuccessFactors · Time Off"
+      show-notifications notifications-count="1">
+      <!-- recreated SAP logo in the logo slot -->
+      <svg slot="logo" class="sap-logo" viewBox="0 0 110 54" xmlns="http://www.w3.org/2000/svg" aria-label="SAP">
+        <defs>
+          <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c9be6"/><stop offset="1" stop-color="#0a6ed1"/></linearGradient>
+          <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d365"/><stop offset="1" stop-color="#e9b000"/></linearGradient>
+        </defs>
+        <polygon points="0,0 110,0 88,54 0,54" fill="url(#b)"/>
+        <text x="12" y="39" font-family="Arial, sans-serif" font-size="34" font-weight="800" fill="url(#g)">SAP</text>
+      </svg>
+      <ui5-shellbar-item icon="search" text="Search"></ui5-shellbar-item>
+      <ui5-shellbar-item icon="sys-help" text="Help"></ui5-shellbar-item>
+      <ui5-avatar slot="profile" initials="EM" color-scheme="Accent6"></ui5-avatar>
+    </ui5-shellbar>
+
+    <div class="page">
+      <ui5-card class="chat-card">
+        <ui5-card-header slot="header" title-text="My Leave Assistant"
+          subtitle-text="Ask about your leave balance in plain language."></ui5-card-header>
+
+        <div id="log">
+          <div class="row"><div class="bubble bot">Hi! 👋 I can check your leave balances from SAP SuccessFactors. What would you like to know?</div></div>
+        </div>
+
+        <div class="chips" id="chips">
+          <ui5-button design="Transparent" class="chip">How many leaves do I have?</ui5-button>
+          <ui5-button design="Transparent" class="chip">Annual leave balance</ui5-button>
+          <ui5-button design="Transparent" class="chip">Do I have any sick leave left?</ui5-button>
+        </div>
+
+        <div class="composer">
+          <ui5-input id="input" placeholder="Type your question…"></ui5-input>
+          <ui5-button id="send" design="Emphasized">Send</ui5-button>
+        </div>
+      </ui5-card>
+    </div>
+  </div>
+
+  <script>
+    const log = document.getElementById('log');
+    const input = document.getElementById('input');
+    const send = document.getElementById('send');
+
+    function addRow(text, who) {
+      const row = document.createElement('div');
+      row.className = 'row ' + who;
+      const bubble = document.createElement('div');
+      bubble.className = 'bubble ' + who;
+      bubble.textContent = text;
+      row.appendChild(bubble);
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+      return bubble;
+    }
+    function addTyping() {
+      const row = document.createElement('div');
+      row.className = 'row bot';
+      row.innerHTML = '<div class="bubble bot"><span class="typing"><span></span><span></span><span></span></span></div>';
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+      return row;
+    }
+
+    async function ask(message) {
+      addRow(message, 'me');
+      input.value = '';
+      send.disabled = true;
+      const typing = addTyping();
+      try {
+        const res = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ message }),
+        });
+        const data = await res.json();
+        const result = data.value || data;
+        typing.remove();
+        addRow(result.reply || (result.error && result.error.message) || 'No response.', 'bot');
+      } catch (err) {
+        typing.remove();
+        addRow('Error: ' + err.message, 'bot');
+      } finally {
+        send.disabled = false;
+        input.focus();
+      }
+    }
+
+    function submit() {
+      const message = (input.value || '').trim();
+      if (message) ask(message);
+    }
+
+    send.addEventListener('click', submit);
+    // ui5-input: submit on Enter
+    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
+    // quick-reply chips
+    document.getElementById('chips').addEventListener('click', (e) => {
+      const btn = e.target.closest('.chip');
+      if (btn) ask(btn.textContent.trim());
+    });
+  </script>
+</body>
+</html>
