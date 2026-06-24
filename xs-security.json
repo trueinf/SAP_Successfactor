@@ -1,0 +1,21 @@
+{
+  "xsappname": "leave-assistant",
+  "tenant-mode": "dedicated",
+  "description": "Security descriptor for the Leave Assistant app",
+  "scopes": [
+    {
+      "name": "$XSAPPNAME.Employee",
+      "description": "Can view own leave balance and request time off"
+    }
+  ],
+  "role-templates": [
+    {
+      "name": "Employee",
+      "description": "Leave Assistant employee",
+      "scope-references": ["$XSAPPNAME.Employee"]
+    }
+  ],
+  "oauth2-configuration": {
+    "redirect-uris": ["https://*.cfapps.*.hana.ondemand.com/**"]
+  }
+}

@@ -143,15 +143,26 @@ function summariseAccounts(timeAccounts) {
 // Extend this map as you learn your tenant's real type codes.
 const TYPE_LABELS = {
   NLD_ADDL: 'Additional Leave (NLD)',
+  'NLD-SICK': 'Sick Leave (NLD)',
   ANNUAL: 'Annual Leave',
+  AnnualLeaveA: 'Annual Leave',
   SICK: 'Sick Leave',
+  TRAINING: 'Training',
+  TOIL_TAT: 'Time Off in Lieu',
 }
 function prettyType(code) {
   if (!code) return 'Leave'
   if (TYPE_LABELS[code]) return TYPE_LABELS[code]
   return String(code)
-    .replace(/_/g, ' ')
+    .replace(/[_-]/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase())
+}
+
+// Parse SAP OData v2 "/Date(ms)/" strings into YYYY-MM-DD.
+function parseSfDate(v) {
+  if (!v) return null
+  const m = /(-?\d+)/.exec(v)
+  return m ? new Date(Number(m[1])).toISOString().slice(0, 10) : null
 }
 
 // Describes the active data source — used by the trace.
@@ -164,4 +175,228 @@ function sfInfo() {
   return { mode: MODE, entity: process.env.SF_ENTITY || 'TimeAccount', source: sources[MODE] || MODE }
 }
 
-module.exports = { getLeaveBalances, sfInfo }
+// ---- Leave history (EmployeeTime entity) -----------------------------------
+
+/**
+ * Returns the user's recent leave/absence records (not WORK time recordings).
+ * @returns {Promise<Array<{timeType,startDate,endDate,days,status,comment}>>}
+ */
+async function getLeaveHistory(userId) {
+  if (MODE === 'mock') return mockHistory()
+
+  const filter = `userId eq '${userId}' and timeType ne 'WORK'`
+  const select = 'timeType,startDate,endDate,quantityInDays,quantityInHours,approvalStatus,comment'
+  const query = `?$filter=${encodeURIComponent(filter)}&$select=${select}&$orderby=startDate desc&$top=25&$format=json`
+
+  let rows = []
+  if (MODE === 'sandbox') {
+    const base = process.env.SF_SANDBOX_URL || 'https://sandbox.api.sap.com/successfactors/odata/v2'
+    const res = await fetch(`${base}/EmployeeTime${query}`, {
+      headers: { APIKey: process.env.SF_API_KEY, Accept: 'application/json' },
+    })
+    if (!res.ok) throw new Error(`History call failed: HTTP ${res.status}`)
+    rows = ((await res.json()).d || {}).results || []
+  } else {
+    // real mode
+    const cloudSdkPkg = '@sap-cloud-sdk/http-client'
+    const { executeHttpRequest } = require(cloudSdkPkg)
+    const destination = { destinationName: process.env.SF_DESTINATION || 'SF_TIMEOFF' }
+    const response = await executeHttpRequest(destination, { method: 'get', url: `/odata/v2/EmployeeTime${query}` })
+    rows = (response.data && response.data.d && response.data.d.results) || []
+  }
+
+  return rows.map((r) => ({
+    timeType: prettyType(r.timeType),
+    startDate: parseSfDate(r.startDate),
+    endDate: parseSfDate(r.endDate),
+    days: Number(r.quantityInDays != null ? r.quantityInDays : 0),
+    status: r.approvalStatus || 'UNKNOWN',
+    comment: r.comment || '',
+  }))
+}
+
+function mockHistory() {
+  return [
+    { timeType: 'Annual Leave', startDate: '2026-05-12', endDate: '2026-05-16', days: 5, status: 'APPROVED', comment: 'Family trip' },
+    { timeType: 'Sick Leave', startDate: '2026-03-03', endDate: '2026-03-03', days: 1, status: 'APPROVED', comment: '' },
+    { timeType: 'Annual Leave', startDate: '2026-07-20', endDate: '2026-07-24', days: 5, status: 'PENDING', comment: 'Summer holiday' },
+  ]
+}
+
+// ---- Request time off (create EmployeeTime) --------------------------------
+
+/**
+ * Submit a leave request. The sandbox is READ-ONLY, so there we validate and
+ * return a clearly-labelled SIMULATED confirmation. In real mode this POSTs a
+ * new EmployeeTime to the tenant via the BTP Destination.
+ * @returns {Promise<{ok,simulated,message,request}>}
+ */
+async function submitLeave(userId, { timeType, startDate, endDate, days, comment }) {
+  if (!timeType || !startDate || !endDate) {
+    return { ok: false, simulated: false, message: 'Please provide a leave type, start date and end date.' }
+  }
+  const request = { userId, timeType, startDate, endDate, days, comment: comment || '' }
+
+  if (MODE === 'real') {
+    const cloudSdkPkg = '@sap-cloud-sdk/http-client'
+    const { executeHttpRequest } = require(cloudSdkPkg)
+    const destination = { destinationName: process.env.SF_DESTINATION || 'SF_TIMEOFF' }
+    const body = {
+      userId,
+      timeType,
+      startDate: `/Date(${Date.parse(startDate)})/`,
+      endDate: `/Date(${Date.parse(endDate)})/`,
+      quantityInDays: String(days || ''),
+      approvalStatus: 'PENDING',
+      comment: comment || '',
+    }
+    await executeHttpRequest(destination, { method: 'post', url: '/odata/v2/EmployeeTime', data: body })
+    return { ok: true, simulated: false, message: 'Leave request submitted to SuccessFactors.', request }
+  }
+
+  // mock / sandbox: read-only -> simulate
+  return {
+    ok: true,
+    simulated: true,
+    message:
+      MODE === 'sandbox'
+        ? 'Simulated submission - the SAP sandbox is read-only, so nothing was written. In a real tenant (SF_MODE=real) this would create the request.'
+        : 'Simulated submission (mock mode).',
+    request,
+  }
+}
+
+// ---- Generic OData GET (sandbox APIKey or real Destination) ----------------
+
+async function sfGet(pathAndQuery) {
+  if (MODE === 'sandbox') {
+    const base = process.env.SF_SANDBOX_URL || 'https://sandbox.api.sap.com/successfactors/odata/v2'
+    const res = await fetch(`${base}/${pathAndQuery}`, {
+      headers: { APIKey: process.env.SF_API_KEY, Accept: 'application/json' },
+    })
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    return ((await res.json()).d || {}).results || []
+  }
+  if (MODE === 'real') {
+    const cloudSdkPkg = '@sap-cloud-sdk/http-client'
+    const { executeHttpRequest } = require(cloudSdkPkg)
+    const destination = { destinationName: process.env.SF_DESTINATION || 'SF_TIMEOFF' }
+    const r = await executeHttpRequest(destination, { method: 'get', url: `/odata/v2/${pathAndQuery}` })
+    return (r.data && r.data.d && r.data.d.results) || []
+  }
+  return [] // mock mode handled by callers
+}
+
+const dash = (v) => (v == null || v === '' ? '—' : v)
+
+// ---- Module: Employee Profile (Core HR) ------------------------------------
+
+async function getProfile(userId) {
+  if (MODE === 'mock') {
+    return {
+      userId, name: 'Jordan Doe', email: 'jordan.doe@example.com', jobTitle: 'HR Business Partner',
+      department: 'People Operations', division: 'Corporate Services', location: 'Amsterdam',
+      company: '2500', costCenter: '2500-2200', payGrade: 'GR-06', employmentType: 'Full-time',
+      fte: 1, standardHours: 40, hireDate: '2017-01-01', managerId: '103187', managerName: 'Alex Manager',
+      country: 'NLD', timezone: 'Europe/Amsterdam',
+    }
+  }
+  const job = (await sfGet(`EmpJob?$filter=userId eq '${userId}'&$orderby=startDate desc&$top=1&$format=json`))[0] || {}
+
+  let name = `Employee ${userId}`
+  let email = ''
+  try {
+    const u = (await sfGet(`User?$filter=userId eq '${userId}'&$select=firstName,lastName,defaultFullName,email&$format=json`))[0]
+    if (u) {
+      name = u.defaultFullName || [u.firstName, u.lastName].filter(Boolean).join(' ') || name
+      email = u.email || ''
+    }
+  } catch {}
+
+  let managerName = job.managerId ? `(${job.managerId})` : '—'
+  if (job.managerId) {
+    try {
+      const m = (await sfGet(`User?$filter=userId eq '${job.managerId}'&$select=defaultFullName,firstName,lastName&$format=json`))[0]
+      if (m) managerName = m.defaultFullName || [m.firstName, m.lastName].filter(Boolean).join(' ') || managerName
+    } catch {}
+  }
+
+  return {
+    userId, name, email,
+    jobTitle: dash(job.jobTitle), department: dash(job.department), division: dash(job.division),
+    location: dash(job.location), company: dash(job.company), costCenter: dash(job.costCenter),
+    payGrade: dash(job.payGrade), employmentType: dash(job.employmentType),
+    fte: job.fte != null ? job.fte : '—', standardHours: job.standardHours != null ? job.standardHours : '—',
+    hireDate: parseSfDate(job.startDate) || '—', managerId: job.managerId || '', managerName,
+    country: dash(job.countryOfCompany), timezone: dash(job.timezone),
+  }
+}
+
+// ---- Module: Compensation --------------------------------------------------
+
+async function getPay(userId) {
+  if (MODE === 'mock') {
+    return { sample: false, userId, components: [
+      { component: 'Base Salary', value: 72000, currency: 'EUR', frequency: 'Annual' },
+      { component: 'Pension Contribution', value: 1, currency: 'EUR', frequency: 'Monthly' },
+    ] }
+  }
+  let rows = await sfGet(`EmpPayCompRecurring?$filter=userId eq '${userId}'&$top=20&$format=json`)
+  let sample = false
+  if (!rows.length) { rows = await sfGet(`EmpPayCompRecurring?$top=8&$format=json`); sample = true }
+  const components = rows.map((r) => ({
+    component: prettyType(r.payComponent), value: r.paycompvalue != null ? Number(r.paycompvalue) : null,
+    currency: r.currencyCode || '', frequency: r.frequency || '',
+  }))
+  return { components, sample, userId }
+}
+
+// ---- Module: Organization / Directory --------------------------------------
+
+async function getOrg(userId) {
+  if (MODE === 'mock') {
+    return {
+      self: { department: 'People Operations', division: 'Corporate Services', location: 'Amsterdam', position: '50074022', managerId: '103187' },
+      directory: [
+        { userId: '103187', name: 'Alex Manager', email: 'alex@example.com' },
+        { userId: '103190', name: 'Sam Colleague', email: 'sam@example.com' },
+      ],
+    }
+  }
+  const job = (await sfGet(`EmpJob?$filter=userId eq '${userId}'&$orderby=startDate desc&$top=1&$format=json`))[0] || {}
+  let directory = []
+  try {
+    const users = await sfGet(`User?$top=12&$select=userId,firstName,lastName,email&$format=json`)
+    directory = users.map((u) => ({ userId: u.userId, name: [u.firstName, u.lastName].filter(Boolean).join(' ') || u.userId, email: u.email || '' }))
+  } catch {}
+  return {
+    self: { department: dash(job.department), division: dash(job.division), location: dash(job.location), position: dash(job.position), managerId: dash(job.managerId) },
+    directory,
+  }
+}
+
+// ---- Module: Recruiting ----------------------------------------------------
+
+async function getRecruiting() {
+  if (MODE === 'mock') {
+    return {
+      requisitions: [{ id: '3', title: 'Marketing Manager', status: 'Open', openings: 1 }],
+      candidates: [{ id: '1283', name: 'Jamie Lee', location: 'Tokyo, Japan', email: 'jamie@example.com' }],
+    }
+  }
+  let requisitions = [], candidates = []
+  try {
+    const r = await sfGet(`JobRequisition?$top=10&$select=jobReqId,jobCode,internalStatus,numberOpenings,templateName&$format=json`)
+    requisitions = r.map((x) => ({ id: x.jobReqId, title: x.templateName || `Job ${x.jobCode || x.jobReqId}`, status: x.internalStatus || '—', openings: x.numberOpenings != null ? x.numberOpenings : '—' }))
+  } catch {}
+  try {
+    const c = await sfGet(`Candidate?$top=10&$select=candidateId,firstName,lastName,city,country,primaryEmail&$format=json`)
+    candidates = c.map((x) => ({ id: x.candidateId, name: [x.firstName, x.lastName].filter(Boolean).join(' ') || `Candidate ${x.candidateId}`, location: [x.city, x.country].filter(Boolean).join(', '), email: x.primaryEmail || '' }))
+  } catch {}
+  return { requisitions, candidates }
+}
+
+module.exports = {
+  getLeaveBalances, getLeaveHistory, submitLeave, sfInfo,
+  getProfile, getPay, getOrg, getRecruiting,
+}

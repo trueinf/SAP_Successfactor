@@ -3,300 +3,414 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Leave Assistant · SAP SuccessFactors</title>
+  <title>SAP SuccessFactors · Employee Portal</title>
   <style>
-    :root {
-      --brand:        #0070f2;
-      --brand-dark:   #0040b0;
-      --brand-2:      #0a6ed1;
-      --ink:          #1a2733;
-      --ink-soft:     #5b6b7b;
-      --line:         #e3e8ef;
-      --bot-bg:       #ffffff;
-      --page-1:       #eef2f7;
-      --page-2:       #e3ebf5;
-      --ok:           #1a8754;
-      --font: "72", "Segoe UI", -apple-system, Roboto, Helvetica, Arial, sans-serif;
-      --shadow-card: 0 10px 40px rgba(18, 42, 71, .12);
-      --shadow-soft: 0 1px 3px rgba(18, 42, 71, .08);
+    :root{
+      --brand:#0070f2;--brand-2:#0a6ed1;--brand-dark:#0040b0;
+      --ink:#1a2733;--ink-soft:#5b6b7b;--line:#e3e8ef;--page:#eef1f5;--card:#fff;
+      --ok:#1a8754;--okbg:#e7f4ec;--warn:#aa6a00;--warnbg:#fbf2e0;--na:#5b6b7b;--nabg:#eef1f4;
+      --font:"72","Segoe UI",-apple-system,Roboto,Helvetica,Arial,sans-serif;
+      --shadow:0 1px 4px rgba(18,42,71,.10),0 8px 24px rgba(18,42,71,.06);
+      --shadow-sm:0 1px 2px rgba(18,42,71,.10);
     }
-    * { box-sizing: border-box; }
-    html, body { height: 100%; margin: 0; }
-    body {
-      font-family: var(--font); color: var(--ink);
-      background: radial-gradient(1200px 600px at 50% -10%, var(--page-2), var(--page-1));
-      display: flex; align-items: center; justify-content: center; padding: 1.25rem;
-    }
+    *{box-sizing:border-box}
+    html,body{height:100%;margin:0}
+    body{font-family:var(--font);color:var(--ink);background:var(--page);display:flex;flex-direction:column}
 
-    .app {
-      width: min(760px, 100%); height: min(860px, 100%);
-      background: #fff; border-radius: 1.25rem; overflow: hidden;
-      display: flex; flex-direction: column; box-shadow: var(--shadow-card);
-      border: 1px solid rgba(255,255,255,.6);
-    }
+    /* shell */
+    .shell{height:2.9rem;flex:0 0 auto;background:#fff;display:flex;align-items:center;gap:.75rem;padding:0 1rem;
+      box-shadow:0 1px 2px rgba(18,42,71,.12);position:relative;z-index:30}
+    .shell .home{display:flex;align-items:center;gap:.6rem;cursor:pointer;border:0;background:transparent;font-family:var(--font)}
+    .shell .logo{height:1.45rem}
+    .shell .title{font-weight:700;font-size:.95rem;color:var(--ink)}
+    .shell .sep{width:1px;height:1.2rem;background:var(--line)}
+    .shell .crumb{font-size:.82rem;color:var(--ink-soft)}
+    .shell .sp{flex:1}
+    .shell .icon{width:2.1rem;height:2.1rem;border:0;background:transparent;border-radius:.5rem;cursor:pointer;color:#475e75;display:flex;align-items:center;justify-content:center}
+    .shell .icon:hover{background:#eef1f4}
+    .shell .ava{width:1.9rem;height:1.9rem;border-radius:50%;background:var(--brand);color:#fff;font-weight:700;font-size:.72rem;display:flex;align-items:center;justify-content:center;margin-left:.2rem}
 
-    /* ---- Header ---- */
-    header {
-      background: linear-gradient(135deg, var(--brand-2) 0%, var(--brand-dark) 100%);
-      color: #fff; padding: 1rem 1.25rem; display: flex; align-items: center; gap: .85rem;
-    }
-    .logo { height: 1.9rem; width: auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
-    .htext { display: flex; flex-direction: column; line-height: 1.2; }
-    .htext .t1 { font-weight: 700; font-size: 1.05rem; letter-spacing: .2px; }
-    .htext .t2 { font-size: .78rem; opacity: .85; }
-    .hspace { flex: 1; }
-    .status {
-      display: inline-flex; align-items: center; gap: .4rem; font-size: .72rem;
-      background: rgba(255,255,255,.16); padding: .3rem .6rem; border-radius: 1rem; backdrop-filter: blur(4px);
-    }
-    .dot { width: .5rem; height: .5rem; border-radius: 50%; background: #3ad29f; box-shadow: 0 0 0 0 rgba(58,210,159,.7); animation: pulse 2s infinite; }
-    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(58,210,159,.6)} 70%{box-shadow:0 0 0 .4rem rgba(58,210,159,0)} 100%{box-shadow:0 0 0 0 rgba(58,210,159,0)} }
+    .wrap{flex:1;overflow-y:auto}
+    .page{max-width:1120px;margin:0 auto;padding:1.4rem 1.25rem 5rem}
+    .head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem}
+    .head h1{margin:0;font-size:1.5rem;font-weight:700}
+    .head .sub{margin:.25rem 0 0;color:var(--ink-soft);font-size:.9rem}
+    .badge{font-size:.72rem;font-weight:600;padding:.28rem .6rem;border-radius:1rem;border:1px solid}
+    .badge.sandbox{color:#6a3ea1;background:#f4eefc;border-color:#e4d4f7}
+    .badge.real{color:var(--ok);background:var(--okbg);border-color:#cde9d6}
+    .badge.mock{color:var(--na);background:var(--nabg);border-color:#dde3ea}
+    .section-title{font-size:.78rem;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:var(--ink-soft);margin:1.4rem .15rem .6rem}
 
-    /* ---- Chat log ---- */
-    #log { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; background: linear-gradient(180deg,#fafbfd,#f4f7fb); }
-    .msg { display: flex; gap: .65rem; max-width: 88%; animation: rise .28s ease both; }
-    .msg.me { align-self: flex-end; flex-direction: row-reverse; }
-    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-    .avatar {
-      flex: 0 0 auto; width: 2rem; height: 2rem; border-radius: 50%; display: flex;
-      align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; margin-top: .1rem;
-    }
-    .avatar.bot { background: #e8f1fe; color: var(--brand-dark); border: 1px solid #d4e6fd; }
-    .avatar.me  { background: var(--brand); color: #fff; }
-    .stack { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
-    .bubble {
-      padding: .7rem .9rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;
-      font-size: .9rem; border-radius: 1rem; box-shadow: var(--shadow-soft);
-    }
-    .msg.bot .bubble { background: var(--bot-bg); border: 1px solid var(--line); border-top-left-radius: .35rem; }
-    .msg.me  .bubble { background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%); color: #fff; border-top-right-radius: .35rem; }
-    .time { font-size: .68rem; color: var(--ink-soft); padding: 0 .35rem; }
-    .msg.me .time { text-align: right; }
+    /* tiles */
+    .tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem}
+    .tile{background:var(--card);border-radius:.85rem;box-shadow:var(--shadow);padding:1rem;cursor:pointer;border:1px solid transparent;
+      transition:.15s;display:flex;flex-direction:column;gap:.5rem;min-height:7.5rem;text-align:left;font-family:var(--font)}
+    .tile:hover{transform:translateY(-2px);border-color:#cfe0f6}
+    .tile .ic{font-size:1.6rem}
+    .tile .tt{font-weight:700;font-size:.98rem}
+    .tile .ts{font-size:.8rem;color:var(--ink-soft);flex:1}
+    .tile-badge{align-self:flex-start;font-size:.66rem;font-weight:700;padding:.15rem .45rem;border-radius:.5rem;text-transform:uppercase;letter-spacing:.3px}
+    .tb-live{color:var(--ok);background:var(--okbg)}
+    .tb-demo{color:var(--warn);background:var(--warnbg)}
+    .tb-na{color:var(--na);background:var(--nabg)}
 
-    /* typing */
-    .typing { display: inline-flex; gap: .28rem; padding: .25rem 0; }
-    .typing i { width: .45rem; height: .45rem; border-radius: 50%; background: #b3c0cf; animation: blink 1.2s infinite both; }
-    .typing i:nth-child(2){animation-delay:.18s} .typing i:nth-child(3){animation-delay:.36s}
-    @keyframes blink { 0%,80%,100%{opacity:.3;transform:translateY(0)} 40%{opacity:1;transform:translateY(-2px)} }
+    /* cards / grids */
+    .grid2{display:grid;grid-template-columns:1fr 1.4fr;gap:1rem}
+    @media(max-width:760px){.grid2{grid-template-columns:1fr}}
+    .card{background:var(--card);border-radius:.85rem;box-shadow:var(--shadow);padding:1.1rem 1.15rem}
+    .card h3{margin:0 0 .85rem;font-size:1rem;font-weight:700}
+    .kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:1rem}
+    .kpi{background:var(--card);border-radius:.85rem;box-shadow:var(--shadow);padding:1.05rem 1.1rem;position:relative;overflow:hidden}
+    .kpi::before{content:"";position:absolute;left:0;top:0;bottom:0;width:.3rem;background:var(--accent,var(--brand))}
+    .kpi .label{font-size:.82rem;color:var(--ink-soft);font-weight:600}
+    .kpi .num{font-size:2rem;font-weight:800;line-height:1.1;margin:.35rem 0 .1rem}
+    .kpi .num small{font-size:.9rem;font-weight:600;color:var(--ink-soft);margin-left:.25rem}
+    .kpi .asof{font-size:.72rem;color:var(--ink-soft)}
+    .kpi.total{background:linear-gradient(135deg,var(--brand),var(--brand-dark));color:#fff}
+    .kpi.total::before{display:none}.kpi.total .label,.kpi.total .asof{color:rgba(255,255,255,.85)}.kpi.total .num small{color:rgba(255,255,255,.85)}
 
-    /* ---- Trace ---- */
-    .trace { margin-top: .15rem; }
-    .trace-toggle {
-      display: inline-flex; align-items: center; gap: .4rem; cursor: pointer;
-      font-family: var(--font); font-size: .74rem; color: var(--brand-dark);
-      background: #eef4ff; border: 1px solid #d8e6fb; padding: .28rem .6rem; border-radius: 1rem;
-    }
-    .trace-toggle:hover { background: #e3eefe; }
-    .trace-toggle .caret { transition: transform .2s; }
-    .trace.open .trace-toggle .caret { transform: rotate(180deg); }
-    .trace-body { display: none; margin-top: .55rem; padding: .6rem .25rem .35rem .25rem; }
-    .trace.open .trace-body { display: block; animation: rise .2s ease both; }
+    table{width:100%;border-collapse:collapse;font-size:.86rem}
+    th,td{text-align:left;padding:.6rem .5rem;border-bottom:1px solid var(--line)}
+    th{font-size:.72rem;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft)}
+    td.num{font-weight:700}tr:last-child td{border-bottom:0}
+    .pill{font-size:.72rem;font-weight:600;padding:.18rem .5rem;border-radius:1rem;display:inline-block}
+    .pill.approved{color:var(--ok);background:var(--okbg)}.pill.pending{color:var(--warn);background:var(--warnbg)}.pill.rejected{color:#a01b1b;background:#fcecec}
 
-    .tstep { position: relative; padding: 0 0 .85rem 1.9rem; }
-    .tstep::before { content: ""; position: absolute; left: .68rem; top: 1.5rem; bottom: -.1rem; width: 2px; background: #dbe5f1; }
-    .tstep:last-of-type::before { display: none; }
-    .tdot {
-      position: absolute; left: 0; top: 0; width: 1.5rem; height: 1.5rem; border-radius: 50%;
-      background: #fff; border: 2px solid #cfe0f6; display: flex; align-items: center; justify-content: center; font-size: .8rem;
-    }
-    .thead { display: flex; align-items: baseline; gap: .5rem; }
-    .ttitle { font-weight: 600; font-size: .82rem; }
-    .tms { font-size: .68rem; color: var(--ink-soft); background: #f0f3f7; padding: .05rem .4rem; border-radius: .5rem; }
-    .tengine { font-size: .72rem; color: var(--brand-dark); margin: .1rem 0; font-weight: 500; }
-    .tdetail { font-size: .76rem; color: var(--ink-soft); }
-    .ttotal { font-size: .74rem; color: var(--ink-soft); padding-left: 1.9rem; }
-    .ttotal b { color: var(--ink); }
+    .donut-wrap{display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+    .legend{display:flex;flex-direction:column;gap:.45rem;font-size:.82rem}.legend .li{display:flex;align-items:center;gap:.5rem}.legend .sw{width:.7rem;height:.7rem;border-radius:.2rem}
 
-    /* ---- Quick chips ---- */
-    .chips { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1.25rem 0; }
-    .chip {
-      font-family: var(--font); font-size: .78rem; cursor: pointer; color: var(--brand);
-      background: #fff; border: 1px solid #cfe0f6; border-radius: 1rem; padding: .35rem .75rem; transition: .15s;
-    }
-    .chip:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+    /* profile */
+    .pf-head{display:flex;align-items:center;gap:1rem;margin-bottom:1rem}
+    .pf-ava{width:4rem;height:4rem;border-radius:50%;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;font-weight:800;font-size:1.4rem;display:flex;align-items:center;justify-content:center}
+    .pf-name{font-size:1.3rem;font-weight:700}
+    .pf-role{color:var(--ink-soft)}
+    .fields{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:.9rem}
+    .field-item .k{font-size:.72rem;text-transform:uppercase;letter-spacing:.3px;color:var(--ink-soft)}
+    .field-item .v{font-size:.95rem;font-weight:600;margin-top:.15rem;word-break:break-word}
 
-    /* ---- Composer ---- */
-    .composer { display: flex; gap: .6rem; padding: .85rem 1.25rem 1.1rem; align-items: center; }
-    .field {
-      flex: 1; padding: .7rem .9rem; font-size: .9rem; font-family: var(--font); color: var(--ink);
-      border: 1px solid #cdd7e3; border-radius: .85rem; outline: none; background: #fff; transition: .15s;
-    }
-    .field:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0,112,242,.15); }
-    .send {
-      width: 2.7rem; height: 2.7rem; border: 0; border-radius: .85rem; cursor: pointer;
-      background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%); color: #fff;
-      display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,112,242,.35);
-      transition: .15s;
-    }
-    .send:hover:not(:disabled) { transform: translateY(-1px); }
-    .send:disabled { opacity: .5; cursor: default; box-shadow: none; }
-    .send svg { width: 1.15rem; height: 1.15rem; }
+    .list .li{display:flex;align-items:center;gap:.7rem;padding:.55rem 0;border-bottom:1px solid var(--line)}
+    .list .li:last-child{border-bottom:0}
+    .li .av{width:2.1rem;height:2.1rem;border-radius:50%;background:#e8f1fe;color:var(--brand-dark);font-weight:700;font-size:.72rem;display:flex;align-items:center;justify-content:center;flex:0 0 auto}
+    .li .n{font-weight:600;font-size:.88rem}.li .e{font-size:.78rem;color:var(--ink-soft)}
+
+    .note{font-size:.82rem;color:var(--ink-soft);background:#f6f8fb;border:1px solid #e7edf4;border-radius:.6rem;padding:.7rem .8rem;margin-bottom:1rem}
+    .feature-list{columns:2;gap:1.5rem;font-size:.88rem;color:var(--ink);margin:0;padding-left:1.1rem}
+    @media(max-width:600px){.feature-list{columns:1}}
+    .feature-list li{margin:.25rem 0}
+    .skeleton{background:linear-gradient(90deg,#eef1f4 25%,#e3e8ef 37%,#eef1f4 63%);background-size:400% 100%;animation:sh 1.2s infinite;border-radius:.4rem;color:transparent}
+    @keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+    .err{background:#fcecec;border:1px solid #f3c9c9;color:#a01b1b;padding:.8rem 1rem;border-radius:.6rem;font-size:.88rem}
+
+    .head-actions{display:flex;align-items:center;gap:.75rem}
+    .btn-primary{font-family:var(--font);font-size:.84rem;font-weight:600;cursor:pointer;color:#fff;border:0;background:linear-gradient(135deg,var(--brand),var(--brand-2));padding:.55rem .9rem;border-radius:.6rem;box-shadow:0 4px 12px rgba(0,112,242,.3)}
+    .btn-primary:hover{transform:translateY(-1px)}.btn-primary:disabled{opacity:.5}
+    .btn-back{font-family:var(--font);font-size:.82rem;color:var(--brand);background:transparent;border:0;cursor:pointer;padding:.2rem 0;margin-bottom:.4rem}
+
+    /* modal */
+    .modal{position:fixed;inset:0;z-index:60;background:rgba(18,42,71,.45);display:none;align-items:center;justify-content:center;padding:1rem}
+    .modal.open{display:flex}
+    .modal-card{background:#fff;border-radius:1rem;box-shadow:0 24px 60px rgba(18,42,71,.35);width:min(440px,100%);overflow:hidden;animation:rise .2s ease both}
+    @keyframes rise{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+    .modal-head{padding:1rem 1.25rem;border-bottom:1px solid var(--line);display:flex;align-items:center}
+    .modal-head h3{margin:0;font-size:1.05rem}.modal-head .x{margin-left:auto;border:0;background:#eef1f4;width:1.9rem;height:1.9rem;border-radius:.5rem;cursor:pointer;font-size:1rem}
+    .modal-body{padding:1.1rem 1.25rem;display:flex;flex-direction:column;gap:.8rem}
+    .fld{display:flex;flex-direction:column;gap:.3rem}.fld label{font-size:.78rem;font-weight:600;color:var(--ink-soft)}
+    .fld input,.fld select,.fld textarea{font-family:var(--font);font-size:.88rem;padding:.55rem .7rem;border:1px solid #cdd7e3;border-radius:.55rem;outline:none;color:var(--ink);background:#fff}
+    .fld input:focus,.fld select:focus,.fld textarea:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,112,242,.15)}
+    .reqnote{font-size:.74rem;color:var(--ink-soft);background:#f6f8fb;border:1px solid #e7edf4;border-radius:.5rem;padding:.5rem .6rem}
+    .modal-foot{display:flex;justify-content:flex-end;gap:.6rem;margin-top:.2rem}
+    .btn-ghost{font-family:var(--font);font-size:.84rem;cursor:pointer;background:#fff;border:1px solid #cdd7e3;border-radius:.6rem;padding:.5rem .9rem}
+    .toast{position:fixed;left:50%;bottom:1.5rem;transform:translateX(-50%) translateY(1rem);z-index:70;background:#1a2733;color:#fff;padding:.7rem 1.1rem;border-radius:.7rem;font-size:.85rem;box-shadow:0 10px 30px rgba(0,0,0,.3);opacity:0;pointer-events:none;transition:.2s;max-width:90vw;text-align:center}
+    .toast.show{opacity:1;transform:translateX(-50%)}.toast.warn{background:#7a4a00}
+
+    /* assistant */
+    .fab{position:fixed;right:1.5rem;bottom:1.5rem;z-index:40;height:3.4rem;padding:0 1.2rem 0 1rem;border:0;border-radius:2rem;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;font-family:var(--font);font-weight:600;font-size:.9rem;cursor:pointer;display:flex;align-items:center;gap:.55rem;box-shadow:0 8px 22px rgba(0,112,242,.4);transition:.15s}
+    .fab:hover{transform:translateY(-2px)}.fab svg{width:1.3rem;height:1.3rem}
+    .assistant{position:fixed;right:1.5rem;bottom:1.5rem;z-index:50;width:min(400px,calc(100vw - 2rem));height:min(620px,calc(100vh - 2rem));background:#fff;border-radius:1rem;box-shadow:0 20px 60px rgba(18,42,71,.32);display:flex;flex-direction:column;overflow:hidden;transform:translateY(16px) scale(.97);opacity:0;pointer-events:none;transition:.18s ease}
+    .assistant.open{transform:none;opacity:1;pointer-events:auto}
+    .a-head{background:linear-gradient(135deg,var(--brand-2),var(--brand-dark));color:#fff;padding:.85rem 1rem;display:flex;align-items:center;gap:.6rem}
+    .a-head .a-ava{width:2rem;height:2rem;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.7rem}
+    .a-head .a-t1{font-weight:700;font-size:.92rem;line-height:1.1}.a-head .a-t2{font-size:.72rem;opacity:.85}.a-head .sp{flex:1}
+    .a-close{width:1.9rem;height:1.9rem;border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:.5rem;cursor:pointer;font-size:1rem}
+    #log{flex:1;overflow-y:auto;padding:1rem;display:flex;flex-direction:column;gap:.85rem;background:#f7f9fc}
+    .msg{display:flex;gap:.55rem;max-width:90%;animation:rise .25s ease both}.msg.me{align-self:flex-end;flex-direction:row-reverse}
+    .mav{flex:0 0 auto;width:1.7rem;height:1.7rem;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.62rem;font-weight:700;margin-top:.1rem}
+    .mav.bot{background:#e8f1fe;color:var(--brand-dark);border:1px solid #d4e6fd}.mav.me{background:var(--brand);color:#fff}
+    .stack{display:flex;flex-direction:column;gap:.28rem;min-width:0}
+    .bubble{padding:.6rem .8rem;line-height:1.45;white-space:pre-wrap;word-wrap:break-word;font-size:.86rem;border-radius:.85rem;box-shadow:var(--shadow-sm)}
+    .msg.bot .bubble{background:#fff;border:1px solid var(--line);border-top-left-radius:.3rem}.msg.me .bubble{background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;border-top-right-radius:.3rem}
+    .typing{display:inline-flex;gap:.25rem;padding:.2rem 0}.typing i{width:.4rem;height:.4rem;border-radius:50%;background:#b3c0cf;animation:blink 1.2s infinite both}.typing i:nth-child(2){animation-delay:.18s}.typing i:nth-child(3){animation-delay:.36s}
+    @keyframes blink{0%,80%,100%{opacity:.3}40%{opacity:1}}
+    .trace{margin-top:.1rem}
+    .trace-toggle{display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;font-family:var(--font);font-size:.72rem;color:var(--brand-dark);background:#eef4ff;border:1px solid #d8e6fb;padding:.25rem .55rem;border-radius:1rem}
+    .trace-toggle:hover{background:#e3eefe}.trace-toggle .caret{transition:transform .2s}.trace.open .trace-toggle .caret{transform:rotate(180deg)}
+    .trace-body{display:none;margin-top:.5rem}.trace.open .trace-body{display:block;animation:rise .2s ease both}
+    .tstep{position:relative;padding:0 0 .8rem 1.8rem}.tstep::before{content:"";position:absolute;left:.63rem;top:1.45rem;bottom:-.1rem;width:2px;background:#dbe5f1}.tstep:last-of-type::before{display:none}
+    .tdot{position:absolute;left:0;top:0;width:1.4rem;height:1.4rem;border-radius:50%;background:#fff;border:2px solid #cfe0f6;display:flex;align-items:center;justify-content:center;font-size:.72rem}
+    .thead{display:flex;align-items:baseline;gap:.45rem}.ttitle{font-weight:600;font-size:.8rem}.tms{font-size:.66rem;color:var(--ink-soft);background:#f0f3f7;padding:.04rem .38rem;border-radius:.5rem}
+    .tengine{font-size:.7rem;color:var(--brand-dark);margin:.08rem 0;font-weight:500}.tdetail{font-size:.74rem;color:var(--ink-soft)}
+    .ttotal{font-size:.72rem;color:var(--ink-soft);padding-left:1.8rem}.ttotal b{color:var(--ink)}
+    .chips{display:flex;flex-wrap:wrap;gap:.4rem;padding:.6rem 1rem 0}
+    .chip{font-family:var(--font);font-size:.74rem;cursor:pointer;color:var(--brand);background:#fff;border:1px solid #cfe0f6;border-radius:1rem;padding:.3rem .65rem}.chip:hover{background:var(--brand);color:#fff;border-color:var(--brand)}
+    .composer{display:flex;gap:.5rem;padding:.75rem 1rem .9rem;align-items:center}
+    .field{flex:1;padding:.6rem .8rem;font-size:.86rem;font-family:var(--font);color:var(--ink);border:1px solid #cdd7e3;border-radius:.75rem;outline:none}.field:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,112,242,.15)}
+    .sendbtn{width:2.4rem;height:2.4rem;border:0;border-radius:.7rem;cursor:pointer;background:linear-gradient(135deg,var(--brand),var(--brand-2));color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(0,112,242,.35)}.sendbtn:disabled{opacity:.5}.sendbtn svg{width:1.05rem;height:1.05rem}
   </style>
 </head>
 <body>
-  <div class="app">
-    <header>
+  <div class="shell">
+    <button class="home" id="homeBtn" title="Home">
       <svg class="logo" viewBox="0 0 110 54" xmlns="http://www.w3.org/2000/svg" aria-label="SAP">
         <defs>
+          <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c9be6"/><stop offset="1" stop-color="#0a6ed1"/></linearGradient>
           <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8d979"/><stop offset="1" stop-color="#e9b000"/></linearGradient>
         </defs>
-        <polygon points="0,0 110,0 88,54 0,54" fill="rgba(255,255,255,.16)"/>
-        <text x="11" y="39" font-family="Arial, sans-serif" font-size="34" font-weight="800" fill="url(#g)">SAP</text>
+        <polygon points="0,0 110,0 88,54 0,54" fill="url(#b)"/>
+        <text x="11" y="39" font-family="Arial" font-size="34" font-weight="800" fill="url(#g)">SAP</text>
       </svg>
-      <div class="htext">
-        <span class="t1">Leave Assistant</span>
-        <span class="t2">SuccessFactors · Time Off</span>
-      </div>
-      <div class="hspace"></div>
-      <span class="status"><span class="dot"></span> Connected</span>
-    </header>
+      <span class="title">SuccessFactors</span>
+    </button>
+    <div class="sep"></div>
+    <span class="crumb" id="crumb">Home</span>
+    <div class="sp"></div>
+    <button class="icon" title="Search">&#128269;</button>
+    <button class="icon" title="Notifications">&#128276;</button>
+    <div class="ava" title="Employee">EM</div>
+  </div>
 
-    <div id="log">
-      <div class="msg bot">
-        <div class="avatar bot">SAP</div>
-        <div class="stack">
-          <div class="bubble">Hi! 👋 I can check your leave balances from SAP SuccessFactors. Ask me anything — and tap <b>“How I got this”</b> under any answer to see the steps behind it.</div>
-        </div>
-      </div>
+  <div class="wrap"><div class="page" id="main"></div></div>
+
+  <!-- Request Time Off modal (global) -->
+  <div class="modal" id="modal">
+    <div class="modal-card">
+      <div class="modal-head"><h3>Request Time Off</h3><button class="x" id="modalClose" title="Close">&times;</button></div>
+      <form id="reqForm" class="modal-body">
+        <div class="fld"><label for="rType">Leave type</label><select id="rType" required><option value="">Select…</option></select></div>
+        <div class="fld"><label for="rStart">Start date</label><input type="date" id="rStart" required></div>
+        <div class="fld"><label for="rEnd">End date</label><input type="date" id="rEnd" required></div>
+        <div class="fld"><label for="rComment">Comment (optional)</label><textarea id="rComment" rows="2" placeholder="Reason for leave…"></textarea></div>
+        <div class="reqnote">Note: against the read-only SAP sandbox this is a <b>simulated</b> submission. With a real tenant (<code>SF_MODE=real</code>) it creates the request in SuccessFactors.</div>
+        <div class="modal-foot"><button type="button" class="btn-ghost" id="modalCancel">Cancel</button><button type="submit" class="btn-primary" id="reqSubmit">Submit request</button></div>
+      </form>
     </div>
+  </div>
+  <div class="toast" id="toast"></div>
 
-    <div class="chips" id="chips">
-      <button class="chip">How many leaves do I have?</button>
-      <button class="chip">Annual leave balance</button>
-      <button class="chip">Do I have any sick leave left?</button>
-    </div>
-
-    <form class="composer" id="form">
-      <input id="input" class="field" autocomplete="off" placeholder="Type your question…" />
-      <button id="send" class="send" type="submit" title="Send">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-      </button>
-    </form>
+  <!-- Assistant (global) -->
+  <button class="fab" id="fab">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+    Ask Assistant
+  </button>
+  <div class="assistant" id="assistant">
+    <div class="a-head"><div class="a-ava">SAP</div><div><div class="a-t1">Leave Assistant</div><div class="a-t2">Powered by SuccessFactors + AI</div></div><div class="sp"></div><button class="a-close" id="aClose" title="Close">&times;</button></div>
+    <div id="log"></div>
+    <div class="chips" id="chips"><button class="chip">How many leaves do I have?</button><button class="chip">Annual leave balance</button></div>
+    <form class="composer" id="form"><input id="input" class="field" autocomplete="off" placeholder="Type your question…" /><button id="send" class="sendbtn" type="submit" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></form>
   </div>
 
   <script>
-    const log   = document.getElementById('log');
-    const form  = document.getElementById('form');
-    const input = document.getElementById('input');
-    const send  = document.getElementById('send');
+    const main=document.getElementById('main'), crumb=document.getElementById('crumb');
+    const PALETTE=['#0070f2','#36a41d','#aa6a00','#7858ff','#e76500','#0f82c2'];
+    const esc=(s)=>String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const initials=(n)=>String(n||'?').trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase();
+    const fmtMs=(ms)=>ms>=1000?(ms/1000).toFixed(2)+'s':Math.round(ms)+'ms';
+    async function getJSON(u){const r=await fetch(u);const d=await r.json();if(d.error)throw new Error(d.error);return d;}
+    const skeleton=(t)=>`<div class="card"><div class="skeleton" style="height:1rem;width:40%;margin-bottom:.8rem">.</div><div class="skeleton" style="height:5rem">.</div></div>`;
 
-    const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    const fmtMs = (ms) => ms >= 1000 ? (ms / 1000).toFixed(2) + 's' : Math.round(ms) + 'ms';
+    /* ---------------- Modules registry ---------------- */
+    const MODULES=[
+      {id:'time',title:'Time Off',icon:'🌴',group:'My HR',status:'live',sub:'Balances, history & requests'},
+      {id:'profile',title:'My Profile',icon:'👤',group:'My HR',status:'live',sub:'Employee master data (Core HR)'},
+      {id:'pay',title:'Compensation',icon:'💶',group:'My HR',status:'live',sub:'Pay components'},
+      {id:'org',title:'Organization',icon:'🏢',group:'My HR',status:'live',sub:'Department, team & directory'},
+      {id:'recruiting',title:'Recruiting',icon:'🧑‍💼',group:'Talent',status:'live',sub:'Job requisitions & candidates'},
+      {id:'performance',title:'Performance & Goals',icon:'🎯',group:'Talent',status:'demo',sub:'Goals, reviews, feedback'},
+      {id:'succession',title:'Succession & Dev',icon:'🪜',group:'Talent',status:'na',sub:'Talent review, 9-box'},
+      {id:'onboarding',title:'Onboarding',icon:'📝',group:'Talent',status:'na',sub:'New-hire journeys'},
+      {id:'learning',title:'Learning (LMS)',icon:'🎓',group:'Operations',status:'na',sub:'Courses & certifications'},
+      {id:'payroll',title:'Payroll',icon:'🧾',group:'Operations',status:'na',sub:'Payslips & gross-to-net'},
+      {id:'analytics',title:'People Analytics',icon:'📊',group:'Operations',status:'na',sub:'Workforce dashboards'},
+      {id:'talent',title:'Talent Intelligence',icon:'🧠',group:'Operations',status:'na',sub:'Skills & AI matching'},
+    ];
+    const STATUS_BADGE={live:['tb-live','Live data'],demo:['tb-demo','Demo data'],na:['tb-na','Requires module']};
+    const FEATURES={
+      performance:['Goal setting & OKRs','Performance reviews','Continuous feedback','360-degree reviews','Calibration sessions'],
+      succession:['Talent review','Successor identification','Career paths','Development plans','9-box matrix','Risk of loss'],
+      onboarding:['Digital onboarding','Welcome portal','New-hire forms','Document signing','Buddy assignments','Offboarding'],
+      learning:['Courses & e-learning','Certifications','Compliance training','Learning paths','Skills tracking','Assessments'],
+      payroll:['Gross-to-net payroll','Tax calculations','Payslips','Retro payroll','Payroll reporting'],
+      analytics:['Workforce analytics','Attrition analysis','Diversity metrics','Hiring analytics','Executive dashboards'],
+      talent:['Skills inventory','Skills matching','Career recommendations','Internal mobility','Skills gap analysis'],
+    };
 
-    function msgEl(who) {
-      const msg = document.createElement('div');
-      msg.className = 'msg ' + who;
-      const av = document.createElement('div');
-      av.className = 'avatar ' + who;
-      av.textContent = who === 'bot' ? 'SAP' : 'ME';
-      const stack = document.createElement('div');
-      stack.className = 'stack';
-      msg.appendChild(av); msg.appendChild(stack);
-      log.appendChild(msg);
-      log.scrollTop = log.scrollHeight;
-      return stack;
+    /* ---------------- Launchpad home ---------------- */
+    let dataMode='';
+    async function renderHome(){
+      crumb.textContent='Home';
+      const groups=[...new Set(MODULES.map(m=>m.group))];
+      main.innerHTML=`<div class="head"><div><h1>Employee Portal</h1><p class="sub">SAP SuccessFactors — select an app to continue.</p></div><span id="modeBadge" class="badge mock">data source</span></div>`
+        + groups.map(g=>`<div class="section-title">${esc(g)}</div><div class="tiles">${MODULES.filter(m=>m.group===g).map(tile).join('')}</div>`).join('');
+      document.querySelectorAll('.tile').forEach(t=>t.addEventListener('click',()=>location.hash='#/'+t.dataset.id));
+      // reflect data mode from the time/profile source
+      try{const d=await getJSON('/api/balances');dataMode=(d.source&&d.source.mode)||'';setModeBadge();}catch{}
+    }
+    function tile(m){
+      const [cls,txt]=STATUS_BADGE[m.status];
+      return `<button class="tile" data-id="${m.id}"><div class="ic">${m.icon}</div><div class="tt">${esc(m.title)}</div><div class="ts">${esc(m.sub)}</div><span class="tile-badge ${cls}">${txt}</span></button>`;
+    }
+    function setModeBadge(){
+      const b=document.getElementById('modeBadge');if(!b)return;
+      const map={sandbox:['sandbox','Sandbox data'],real:['real','Live tenant'],mock:['mock','Mock data']};
+      const [c,t]=map[dataMode]||['mock','Mock data'];b.className='badge '+c;b.textContent=t;
     }
 
-    function addText(stack, text, withTime) {
-      const b = document.createElement('div');
-      b.className = 'bubble';
-      b.textContent = text;
-      stack.appendChild(b);
-      if (withTime) {
-        const t = document.createElement('div');
-        t.className = 'time';
-        t.textContent = now();
-        stack.appendChild(t);
-      }
-      log.scrollTop = log.scrollHeight;
-      return b;
+    /* ---------------- Shared bits ---------------- */
+    function moduleHead(title,sub,actionsHTML){
+      return `<button class="btn-back" onclick="location.hash='#/'">‹ Back to home</button>
+        <div class="head"><div><h1>${esc(title)}</h1><p class="sub">${esc(sub||'')}</p></div><div class="head-actions">${actionsHTML||''}</div></div>`;
+    }
+    function pill(status){const s=(status||'').toLowerCase();const c=s.includes('approve')?'approved':(s.includes('reject')||s.includes('cancel'))?'rejected':'pending';return `<span class="pill ${c}">${esc(status||'—')}</span>`;}
+
+    /* ---------------- Time Off ---------------- */
+    async function renderTime(){
+      crumb.textContent='Time Off';
+      main.innerHTML=moduleHead('My Time Off','Balances, history and requests','<button class="btn-primary" id="requestBtn">+ Request Time Off</button>')
+        +`<div class="section-title">Balances</div><div id="kpis" class="kpis">${skeleton()}</div>
+          <div class="grid2" style="margin-top:.4rem"><div class="card"><h3>Balance distribution</h3><div id="donutWrap"><div class="skeleton" style="width:9rem;height:9rem;border-radius:50%"></div></div></div>
+          <div class="card"><h3>Leave accounts</h3><table><thead><tr><th>Leave type</th><th>Balance</th><th>Unit</th><th>As of</th></tr></thead><tbody id="tbody"><tr><td class="skeleton">…</td><td></td><td></td><td></td></tr></tbody></table></div></div>
+          <div class="section-title">Recent leave</div><div class="card"><table><thead><tr><th>Leave type</th><th>Dates</th><th>Days</th><th>Status</th></tr></thead><tbody id="histBody"><tr><td class="skeleton">…</td><td></td><td></td><td></td></tr></tbody></table></div>`;
+      document.getElementById('requestBtn').addEventListener('click',openModal);
+      try{
+        const d=await getJSON('/api/balances');dataMode=(d.source&&d.source.mode)||dataMode;
+        const accounts=d.accounts||[];
+        const dayTotal=accounts.filter(a=>a.unit==='days').reduce((s,a)=>s+a.balance,0);
+        const kpis=document.getElementById('kpis');kpis.innerHTML='';
+        const tot=document.createElement('div');tot.className='kpi total';tot.innerHTML=`<div class="label">Total available (days)</div><div class="num">${dayTotal}<small>days</small></div><div class="asof">${accounts.length} account(s)</div>`;kpis.appendChild(tot);
+        accounts.forEach((a,i)=>{const c=document.createElement('div');c.className='kpi';c.style.setProperty('--accent',PALETTE[i%PALETTE.length]);c.innerHTML=`<div class="label">${esc(a.accountType)}</div><div class="num">${a.balance}<small>${esc(a.unit)}</small></div><div class="asof">as of ${esc(a.asOf)}</div>`;kpis.appendChild(c);});
+        renderDonut(accounts.filter(a=>a.unit==='days'));populateTypes(accounts);
+        const tb=document.getElementById('tbody');tb.innerHTML=accounts.map(a=>`<tr><td>${esc(a.accountType)}</td><td class="num">${a.balance}</td><td>${esc(a.unit)}</td><td>${esc(a.asOf)}</td></tr>`).join('')||'<tr><td colspan="4">No accounts.</td></tr>';
+      }catch(e){document.getElementById('kpis').innerHTML='<div class="err">Could not load balances: '+esc(e.message)+'</div>';}
+      try{
+        const h=(await getJSON('/api/history')).history||[];
+        document.getElementById('histBody').innerHTML=h.length?h.map(x=>{const dates=x.startDate===x.endDate?x.startDate:(x.startDate+' → '+x.endDate);return `<tr><td>${esc(x.timeType)}</td><td>${esc(dates)}</td><td>${esc(x.days)}</td><td>${pill(x.status)}</td></tr>`;}).join(''):'<tr><td colspan="4" style="color:var(--ink-soft)">No leave records.</td></tr>';
+      }catch(e){document.getElementById('histBody').innerHTML='<tr><td colspan="4" class="err">'+esc(e.message)+'</td></tr>';}
+    }
+    function renderDonut(items){
+      const wrap=document.getElementById('donutWrap');const total=items.reduce((s,a)=>s+a.balance,0);
+      if(!total){wrap.innerHTML='<div style="color:var(--ink-soft);font-size:.85rem">No day-based balances to chart.</div>';return;}
+      const R=54,C=2*Math.PI*R;let off=0,circles='';
+      items.forEach((a,i)=>{const len=(a.balance/total)*C;circles+=`<circle cx="70" cy="70" r="${R}" fill="none" stroke="${PALETTE[i%PALETTE.length]}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-off}" transform="rotate(-90 70 70)"/>`;off+=len;});
+      wrap.innerHTML=`<svg width="140" height="140" viewBox="0 0 140 140"><circle cx="70" cy="70" r="${R}" fill="none" stroke="#eef1f4" stroke-width="22"/>${circles}<text x="70" y="66" text-anchor="middle" font-size="26" font-weight="800" fill="#1a2733">${total}</text><text x="70" y="84" text-anchor="middle" font-size="11" fill="#5b6b7b">days</text></svg><div class="legend">${items.map((a,i)=>`<div class="li"><span class="sw" style="background:${PALETTE[i%PALETTE.length]}"></span>${esc(a.accountType)} · <b>${a.balance}</b></div>`).join('')}</div>`;
     }
 
-    function addTyping(stack) {
-      const b = document.createElement('div');
-      b.className = 'bubble';
-      b.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
-      stack.appendChild(b);
-      log.scrollTop = log.scrollHeight;
-      return b;
+    /* ---------------- Profile ---------------- */
+    async function renderProfile(){
+      crumb.textContent='My Profile';main.innerHTML=moduleHead('My Profile','Employee master data (Employee Central)')+skeleton();
+      try{
+        const p=(await getJSON('/api/profile')).profile;
+        const f=(k,v)=>`<div class="field-item"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`;
+        main.innerHTML=moduleHead('My Profile','Employee master data (Employee Central)')
+          +`<div class="card"><div class="pf-head"><div class="pf-ava">${initials(p.name)}</div><div><div class="pf-name">${esc(p.name)}</div><div class="pf-role">${esc(p.jobTitle)}</div></div></div>
+            <div class="fields">
+              ${f('Employee ID',p.userId)}${f('Email',p.email||'—')}${f('Manager',p.managerName)}
+              ${f('Department',p.department)}${f('Division',p.division)}${f('Location',p.location)}
+              ${f('Company',p.company)}${f('Cost Center',p.costCenter)}${f('Pay Grade',p.payGrade)}
+              ${f('Employment Type',p.employmentType)}${f('FTE',p.fte)}${f('Standard Hours',p.standardHours)}
+              ${f('Hire Date',p.hireDate)}${f('Country',p.country)}${f('Time Zone',p.timezone)}
+            </div></div>`;
+      }catch(e){main.innerHTML=moduleHead('My Profile','')+'<div class="err">Could not load profile: '+esc(e.message)+'</div>';}
     }
 
-    function addTrace(stack, trace, totalMs) {
-      if (!trace || !trace.length) return;
-      const wrap = document.createElement('div');
-      wrap.className = 'trace';
-
-      const toggle = document.createElement('button');
-      toggle.type = 'button';
-      toggle.className = 'trace-toggle';
-      toggle.innerHTML = '🔍 How I got this · ' + fmtMs(totalMs || 0) + ' <span class="caret">▾</span>';
-      toggle.addEventListener('click', () => wrap.classList.toggle('open'));
-
-      const body = document.createElement('div');
-      body.className = 'trace-body';
-
-      const ICONS = { intent: '🧠', fetch: '🗄️', phrase: '✍️' };
-      trace.forEach((s) => {
-        const step = document.createElement('div');
-        step.className = 'tstep';
-        const dot = document.createElement('div'); dot.className = 'tdot'; dot.textContent = ICONS[s.step] || '•';
-        const head = document.createElement('div'); head.className = 'thead';
-        const title = document.createElement('span'); title.className = 'ttitle'; title.textContent = s.title || s.step;
-        const ms = document.createElement('span'); ms.className = 'tms'; ms.textContent = fmtMs(s.ms || 0);
-        head.appendChild(title); head.appendChild(ms);
-        const eng = document.createElement('div'); eng.className = 'tengine'; eng.textContent = s.engine || '';
-        const det = document.createElement('div'); det.className = 'tdetail'; det.textContent = s.detail || '';
-        step.appendChild(dot); step.appendChild(head); step.appendChild(eng); step.appendChild(det);
-        body.appendChild(step);
-      });
-
-      const total = document.createElement('div');
-      total.className = 'ttotal';
-      total.innerHTML = 'Total time: <b>' + fmtMs(totalMs || 0) + '</b>';
-      body.appendChild(total);
-
-      wrap.appendChild(toggle); wrap.appendChild(body);
-      stack.appendChild(wrap);
-      log.scrollTop = log.scrollHeight;
+    /* ---------------- Compensation ---------------- */
+    async function renderPay(){
+      crumb.textContent='Compensation';main.innerHTML=moduleHead('Compensation','Recurring pay components')+skeleton();
+      try{
+        const d=await getJSON('/api/pay');const comps=d.components||[];
+        const note=d.sample?'<div class="note">No pay components on the demo user — showing a sample of sandbox records.</div>':'';
+        main.innerHTML=moduleHead('Compensation','Recurring pay components')+note
+          +`<div class="card"><table><thead><tr><th>Pay component</th><th>Value</th><th>Currency</th><th>Frequency</th></tr></thead><tbody>${comps.length?comps.map(c=>`<tr><td>${esc(c.component)}</td><td class="num">${c.value==null?'—':c.value}</td><td>${esc(c.currency||'—')}</td><td>${esc(c.frequency||'—')}</td></tr>`).join(''):'<tr><td colspan="4" style="color:var(--ink-soft)">No pay components.</td></tr>'}</tbody></table></div>`;
+      }catch(e){main.innerHTML=moduleHead('Compensation','')+'<div class="err">Could not load compensation: '+esc(e.message)+'</div>';}
     }
 
-    async function ask(message) {
-      addText(msgEl('me'), message, true);
-      input.value = '';
-      send.disabled = true;
-
-      const stack = msgEl('bot');
-      const typing = addTyping(stack);
-
-      try {
-        const res = await fetch('/api/chat', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ message }),
-        });
-        const data = await res.json();
-        const result = data.value || data;
-        typing.remove();
-        addText(stack, result.reply || (result.error && result.error.message) || 'No response.', true);
-        addTrace(stack, result.trace, result.totalMs);
-      } catch (err) {
-        typing.remove();
-        addText(stack, 'Error: ' + err.message, true);
-      } finally {
-        send.disabled = false;
-        input.focus();
-      }
+    /* ---------------- Organization ---------------- */
+    async function renderOrg(){
+      crumb.textContent='Organization';main.innerHTML=moduleHead('Organization','Your team and the company directory')+skeleton();
+      try{
+        const d=await getJSON('/api/org');const s=d.self||{};const dir=d.directory||[];
+        const f=(k,v)=>`<div class="field-item"><div class="k">${esc(k)}</div><div class="v">${esc(v)}</div></div>`;
+        main.innerHTML=moduleHead('Organization','Your team and the company directory')
+          +`<div class="grid2"><div class="card"><h3>My position</h3><div class="fields">${f('Department',s.department)}${f('Division',s.division)}${f('Location',s.location)}${f('Position',s.position)}${f('Manager ID',s.managerId)}</div></div>
+            <div class="card"><h3>Company directory</h3><div class="list">${dir.length?dir.map(u=>`<div class="li"><div class="av">${initials(u.name)}</div><div><div class="n">${esc(u.name)}</div><div class="e">${esc(u.email||u.userId)}</div></div></div>`).join(''):'<div style="color:var(--ink-soft)">No directory entries.</div>'}</div></div></div>`;
+      }catch(e){main.innerHTML=moduleHead('Organization','')+'<div class="err">Could not load organization: '+esc(e.message)+'</div>';}
     }
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      const m = input.value.trim();
-      if (m) ask(m);
+    /* ---------------- Recruiting ---------------- */
+    async function renderRecruiting(){
+      crumb.textContent='Recruiting';main.innerHTML=moduleHead('Recruiting','Job requisitions and candidates')+skeleton();
+      try{
+        const d=await getJSON('/api/recruiting');const reqs=d.requisitions||[];const cands=d.candidates||[];
+        main.innerHTML=moduleHead('Recruiting','Job requisitions and candidates')
+          +`<div class="grid2"><div class="card"><h3>Job requisitions (${reqs.length})</h3><table><thead><tr><th>Req ID</th><th>Title</th><th>Status</th><th>Openings</th></tr></thead><tbody>${reqs.length?reqs.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.title)}</td><td>${pill(r.status)}</td><td class="num">${esc(r.openings)}</td></tr>`).join(''):'<tr><td colspan="4" style="color:var(--ink-soft)">No requisitions.</td></tr>'}</tbody></table></div>
+            <div class="card"><h3>Candidates (${cands.length})</h3><div class="list">${cands.length?cands.map(c=>`<div class="li"><div class="av">${initials(c.name)}</div><div><div class="n">${esc(c.name)}</div><div class="e">${esc(c.location||c.email||('ID '+c.id))}</div></div></div>`).join(''):'<div style="color:var(--ink-soft)">No candidates.</div>'}</div></div></div>`;
+      }catch(e){main.innerHTML=moduleHead('Recruiting','')+'<div class="err">Could not load recruiting: '+esc(e.message)+'</div>';}
+    }
+
+    /* ---------------- Stub modules ---------------- */
+    function renderStub(m){
+      crumb.textContent=m.title;
+      const [cls,txt]=STATUS_BADGE[m.status];
+      const why=m.status==='demo'?'This module\'s API is not enabled in the public sandbox, so this is a feature preview. It activates with a tenant that has the module + API access.'
+        :'This is a separate SAP SuccessFactors product with its own API/subscription. The UI is ready; connect that product to populate it.';
+      main.innerHTML=moduleHead(m.title,m.sub,`<span class="tile-badge ${cls}">${txt}</span>`)
+        +`<div class="note">${esc(why)}</div><div class="card"><h3>${m.icon} Capabilities</h3><ul class="feature-list">${(FEATURES[m.id]||[]).map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`;
+    }
+
+    /* ---------------- Router ---------------- */
+    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting};
+    function route(){
+      const id=(location.hash.replace(/^#\/?/,'')||'').trim();
+      window.scrollTo(0,0);
+      if(!id||id==='home'){renderHome();return;}
+      if(RENDER[id]){RENDER[id]();return;}
+      const m=MODULES.find(x=>x.id===id);
+      if(m)renderStub(m);else renderHome();
+    }
+    window.addEventListener('hashchange',route);
+    document.getElementById('homeBtn').addEventListener('click',()=>location.hash='#/');
+
+    /* ---------------- Request modal ---------------- */
+    const modal=document.getElementById('modal');
+    function populateTypes(accounts){const sel=document.getElementById('rType');const types=[...new Set((accounts||[]).map(a=>a.accountType))];const list=types.length?types:['Annual Leave','Sick Leave'];sel.innerHTML='<option value="">Select…</option>'+list.map(t=>`<option>${esc(t)}</option>`).join('');}
+    const openModal=()=>modal.classList.add('open');const closeModal=()=>modal.classList.remove('open');
+    document.getElementById('modalClose').addEventListener('click',closeModal);
+    document.getElementById('modalCancel').addEventListener('click',closeModal);
+    modal.addEventListener('click',e=>{if(e.target===modal)closeModal();});
+    document.getElementById('reqForm').addEventListener('submit',async e=>{
+      e.preventDefault();const btn=document.getElementById('reqSubmit');btn.disabled=true;
+      const body={timeType:document.getElementById('rType').value,startDate:document.getElementById('rStart').value,endDate:document.getElementById('rEnd').value,comment:document.getElementById('rComment').value};
+      const s=new Date(body.startDate),en=new Date(body.endDate);body.days=Math.max(1,Math.round((en-s)/86400000)+1);
+      try{const r=await(await fetch('/api/request',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)})).json();closeModal();toast(r.message||(r.ok?'Request submitted.':'Request failed.'),!!r.simulated);document.getElementById('reqForm').reset();if(r.ok&&location.hash.includes('time'))renderTime();}
+      catch(err){toast('Error: '+err.message,true);}finally{btn.disabled=false;}
     });
-    document.getElementById('chips').addEventListener('click', (e) => {
-      if (e.target.classList.contains('chip')) ask(e.target.textContent.trim());
-    });
-    input.focus();
+    let toastTimer;function toast(msg,warn){const t=document.getElementById('toast');t.textContent=msg;t.className='toast show'+(warn?' warn':'');clearTimeout(toastTimer);toastTimer=setTimeout(()=>{t.className='toast'+(warn?' warn':'');},5500);}
+
+    /* ---------------- Assistant ---------------- */
+    const fab=document.getElementById('fab'),assistant=document.getElementById('assistant'),log=document.getElementById('log');
+    const input=document.getElementById('input'),send=document.getElementById('send');let greeted=false;
+    function openA(){assistant.classList.add('open');fab.style.display='none';if(!greeted){addText(msgEl('bot'),"Hi! 👋 Ask me about your leave balance — tap “How I got this” under any answer to see the steps.");greeted=true;}setTimeout(()=>input.focus(),150);}
+    function closeA(){assistant.classList.remove('open');fab.style.display='flex';}
+    fab.addEventListener('click',openA);document.getElementById('aClose').addEventListener('click',closeA);
+    const ICONS={intent:'🧠',fetch:'🗄️',phrase:'✍️'};
+    function msgEl(who){const m=document.createElement('div');m.className='msg '+who;const a=document.createElement('div');a.className='mav '+who;a.textContent=who==='bot'?'SAP':'ME';const s=document.createElement('div');s.className='stack';m.appendChild(a);m.appendChild(s);log.appendChild(m);log.scrollTop=log.scrollHeight;return s;}
+    function addText(stack,t){const b=document.createElement('div');b.className='bubble';b.textContent=t;stack.appendChild(b);log.scrollTop=log.scrollHeight;return b;}
+    function addTyping(stack){const b=document.createElement('div');b.className='bubble';b.innerHTML='<span class="typing"><i></i><i></i><i></i></span>';stack.appendChild(b);log.scrollTop=log.scrollHeight;return b;}
+    function addTrace(stack,trace,totalMs){if(!trace||!trace.length)return;const wrap=document.createElement('div');wrap.className='trace';const tg=document.createElement('button');tg.type='button';tg.className='trace-toggle';tg.innerHTML='🔍 How I got this · '+fmtMs(totalMs||0)+' <span class="caret">▾</span>';tg.addEventListener('click',()=>wrap.classList.toggle('open'));const body=document.createElement('div');body.className='trace-body';trace.forEach(s=>{const st=document.createElement('div');st.className='tstep';const dot=document.createElement('div');dot.className='tdot';dot.textContent=ICONS[s.step]||'•';const h=document.createElement('div');h.className='thead';const ti=document.createElement('span');ti.className='ttitle';ti.textContent=s.title||s.step;const ms=document.createElement('span');ms.className='tms';ms.textContent=fmtMs(s.ms||0);h.appendChild(ti);h.appendChild(ms);const en=document.createElement('div');en.className='tengine';en.textContent=s.engine||'';const de=document.createElement('div');de.className='tdetail';de.textContent=s.detail||'';st.appendChild(dot);st.appendChild(h);st.appendChild(en);st.appendChild(de);body.appendChild(st);});const tot=document.createElement('div');tot.className='ttotal';tot.innerHTML='Total time: <b>'+fmtMs(totalMs||0)+'</b>';body.appendChild(tot);wrap.appendChild(tg);wrap.appendChild(body);stack.appendChild(wrap);log.scrollTop=log.scrollHeight;}
+    async function ask(message){addText(msgEl('me'),message);input.value='';send.disabled=true;const stack=msgEl('bot');const typing=addTyping(stack);try{const data=await(await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message})})).json();const r=data.value||data;typing.remove();addText(stack,r.reply||(r.error&&r.error.message)||'No response.');addTrace(stack,r.trace,r.totalMs);}catch(err){typing.remove();addText(stack,'Error: '+err.message);}finally{send.disabled=false;input.focus();}}
+    document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const m=input.value.trim();if(m)ask(m);});
+    document.getElementById('chips').addEventListener('click',e=>{if(e.target.classList.contains('chip'))ask(e.target.textContent.trim());});
+
+    /* init */
+    route();
   </script>
 </body>
 </html>

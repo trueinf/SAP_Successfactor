@@ -18,9 +18,51 @@
   # out of the bundle. It is required indirectly so this is just a safety net.
   external_node_modules = ["@sap-cloud-sdk/http-client", "@sap-cloud-sdk/connectivity", "@sap/cds"]
 
-# Frontend calls /api/chat; route it to the function transparently.
+# Frontend calls /api/chat and /api/balances; route them to the functions.
 [[redirects]]
   from = "/api/chat"
   to = "/.netlify/functions/chat"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/balances"
+  to = "/.netlify/functions/balances"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/history"
+  to = "/.netlify/functions/history"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/request"
+  to = "/.netlify/functions/request"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/profile"
+  to = "/.netlify/functions/profile"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/pay"
+  to = "/.netlify/functions/pay"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/org"
+  to = "/.netlify/functions/org"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/recruiting"
+  to = "/.netlify/functions/recruiting"
   status = 200
   force = true
