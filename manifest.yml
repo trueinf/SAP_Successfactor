@@ -1,0 +1,21 @@
+# Cloud Foundry manifest — deploy the app to SAP BTP so it calls
+# SuccessFactors THROUGH the BTP Destination service (real BTP integration).
+#
+# Prereqs (one-time, see BTP-DEPLOY.md):
+#   1) cf create-service destination lite sf-destination
+#   2) create a subaccount Destination named SF_TIMEOFF (points at the sandbox + APIKey)
+#
+# Then:  cf push
+applications:
+  - name: leave-assistant
+    memory: 1G
+    disk_quota: 1G
+    buildpacks:
+      - nodejs_buildpack
+    command: npm start
+    random-route: true
+    env:
+      SF_MODE: real          # route via the BTP Destination (Cloud SDK), not direct APIKey
+      SF_DESTINATION: SF_TIMEOFF
+    services:
+      - sf-destination       # the Destination service instance (gives the app access to SF_TIMEOFF)

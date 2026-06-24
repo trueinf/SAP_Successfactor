@@ -30,7 +30,7 @@
           "kind": "mocked"
         },
         "[production]": {
-          "kind": "xsuaa"
+          "kind": "dummy"
         }
       }
     }
