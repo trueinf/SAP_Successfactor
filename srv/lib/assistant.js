@@ -13,7 +13,7 @@ const { getLeaveBalances, sfInfo } = require('./successfactors')
 // NOTE: keep all trace strings ASCII-only. Emoji icons are added by the
 // frontend (which is UTF-8 HTML) based on each step's `step` id, so the JSON
 // payload stays free of multi-byte characters that can get mangled in transit.
-const PROVIDER_NAMES = { openai: 'OpenAI', anthropic: 'Anthropic' }
+const PROVIDER_NAMES = { openai: 'OpenAI', anthropic: 'Anthropic', 'genai-hub': 'SAP Generative AI Hub' }
 
 function engineLabel(info) {
   if (!info.usingLLM) return 'Keyword fallback (no LLM)'

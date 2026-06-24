@@ -7,9 +7,16 @@
  * Provider is chosen by LLM_PROVIDER:
  *   "openai"    (default) : uses OPENAI_API_KEY  (gpt-4o-mini by default)
  *   "anthropic"           : uses ANTHROPIC_API_KEY (claude-sonnet-4-6 by default)
+ *   "genai-hub"           : SAP Generative AI Hub via SAP AI Core — the
+ *                           compliant, SAP-native option for HR/PII (no data
+ *                           used for training). Resolves AI Core credentials
+ *                           from the bound `aicore` service or the
+ *                           AICORE_SERVICE_KEY env var; model via GENAI_MODEL.
+ *                           Requires: npm i @sap-ai-sdk/orchestration
  *
- * If the selected provider has no API key, both functions fall back to a
- * deterministic keyword classifier / template so the app still runs end-to-end.
+ * If the selected provider isn't ready (no key / SDK / creds), both functions
+ * fall back to a deterministic keyword classifier / template so the app still
+ * runs end-to-end.
  */
 const PROVIDER = (process.env.LLM_PROVIDER || 'openai').toLowerCase()
 
@@ -34,7 +41,10 @@ function anthropicClient() {
 
 const hasOpenAI = Boolean(process.env.OPENAI_API_KEY)
 const hasAnthropic = Boolean(process.env.ANTHROPIC_API_KEY)
-const llmReady = (PROVIDER === 'openai' && hasOpenAI) || (PROVIDER === 'anthropic' && hasAnthropic)
+// AI Core creds are resolved at call time (binding or AICORE_SERVICE_KEY), so
+// treat genai-hub as "ready" and fail-soft to the fallback if the call errors.
+const hasGenAI = PROVIDER === 'genai-hub'
+const llmReady = (PROVIDER === 'openai' && hasOpenAI) || (PROVIDER === 'anthropic' && hasAnthropic) || hasGenAI
 
 if (!llmReady) {
   console.warn(`[llm] provider="${PROVIDER}" has no API key set — using keyword fallback (no LLM calls).`)
@@ -65,6 +75,7 @@ const PHRASE_SYSTEM =
 
 async function extractIntent(message) {
   try {
+    if (PROVIDER === 'genai-hub') return await genaiIntent(message)
     if (PROVIDER === 'openai' && hasOpenAI) return await openaiIntent(message)
     if (PROVIDER === 'anthropic' && hasAnthropic) return await anthropicIntent(message)
   } catch (err) {
@@ -75,6 +86,7 @@ async function extractIntent(message) {
 
 async function phraseAnswer(question, accounts) {
   try {
+    if (PROVIDER === 'genai-hub') return await genaiPhrase(question, accounts)
     if (PROVIDER === 'openai' && hasOpenAI) return await openaiPhrase(question, accounts)
     if (PROVIDER === 'anthropic' && hasAnthropic) return await anthropicPhrase(question, accounts)
   } catch (err) {
@@ -156,6 +168,53 @@ async function anthropicPhrase(question, accounts) {
     .trim()
 }
 
+// ---- SAP Generative AI Hub implementation (SAP AI Core) --------------------
+// Uses @sap-ai-sdk/orchestration, which resolves AI Core credentials from the
+// bound `aicore` service (on BTP) or the AICORE_SERVICE_KEY env var. Indirect
+// require keeps the SDK out of builds that don't use this provider.
+function orchestrationClientFor(template) {
+  const pkg = '@sap-ai-sdk/orchestration'
+  const { OrchestrationClient } = require(pkg)
+  return new OrchestrationClient({
+    llm: { model_name: process.env.GENAI_MODEL || 'gpt-4o', model_params: { temperature: 0 } },
+    templating: { template },
+  })
+}
+
+async function genaiIntent(message) {
+  const client = orchestrationClientFor([
+    {
+      role: 'system',
+      content:
+        'You classify an employee HR question. Respond with ONLY a JSON object, no prose: ' +
+        '{"type":"leave_balance"|"unsupported","leaveType"?:"annual"|"sick"|"casual"}. ' +
+        "Use leave_balance when they ask how much leave/vacation/time off/PTO they have left.",
+    },
+    { role: 'user', content: '{{?question}}' },
+  ])
+  const res = await client.chatCompletion({ inputParams: { question: message } })
+  const text = res.getContent() || ''
+  const match = text.match(/\{[\s\S]*\}/)
+  return match ? JSON.parse(match[0]) : fallbackIntent(message)
+}
+
+async function genaiPhrase(question, accounts) {
+  const client = orchestrationClientFor([
+    { role: 'system', content: PHRASE_SYSTEM },
+    {
+      role: 'user',
+      content:
+        'The employee asked: "{{?question}}"\n\n' +
+        'Verified leave data (JSON, authoritative):\n{{?data}}\n\n' +
+        'Answer their question using only this data.',
+    },
+  ])
+  const res = await client.chatCompletion({
+    inputParams: { question, data: JSON.stringify(accounts, null, 2) },
+  })
+  return (res.getContent() || '').trim() || fallbackPhrase(accounts)
+}
+
 // ---- Deterministic fallbacks (no API key needed) ---------------------------
 
 function fallbackIntent(message) {
@@ -178,10 +237,10 @@ function fallbackPhrase(accounts) {
 
 // Describes the active NLP engine — used by the trace.
 function llmInfo() {
-  const model =
-    PROVIDER === 'anthropic'
-      ? process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
-      : process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  let model
+  if (PROVIDER === 'anthropic') model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
+  else if (PROVIDER === 'genai-hub') model = process.env.GENAI_MODEL || 'gpt-4o'
+  else model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
   return { provider: PROVIDER, model, usingLLM: llmReady }
 }
 
