@@ -203,6 +203,32 @@
       .grid2{grid-template-columns:1fr}
       .tile{min-height:auto}
     }
+
+    /* ---- Leave calendar ---- */
+    .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:.8rem}
+    .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:.4rem}
+    .cal-dow{font-size:.72rem;font-weight:700;text-transform:uppercase;color:var(--ink-soft);text-align:center;padding:.2rem 0}
+    .cal-cell{min-height:3.6rem;border:1px solid var(--line);border-radius:.5rem;padding:.35rem;position:relative;background:var(--card)}
+    .cal-cell.empty{border:0;background:transparent}
+    .cal-cell.leave{background:#e8f1fe;border-color:#cfe0f6}
+    .cal-num{font-size:.82rem;color:var(--ink-soft)}
+    .cal-tag{position:absolute;left:.35rem;bottom:.3rem;right:.35rem;font-size:.62rem;font-weight:700;color:#fff;background:var(--brand);border-radius:.35rem;padding:.05rem .25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    /* ---- Dark mode ---- */
+    html[data-theme="dark"]{--page:#0f1a2b;--card:#16233b;--ink:#e7eef7;--ink-soft:#9db0c6;--line:#27374f;--LIGHT:#16233b}
+    html[data-theme="dark"] .shell{background:#16233b;box-shadow:0 1px 2px rgba(0,0,0,.5)}
+    html[data-theme="dark"] .shell .title,html[data-theme="dark"] .shell .crumb{color:#e7eef7}
+    html[data-theme="dark"] .shell .icon{color:#9db0c6}
+    html[data-theme="dark"] .shell .icon:hover{background:#22344f}
+    html[data-theme="dark"] .tile,html[data-theme="dark"] .card,html[data-theme="dark"] .kpi{background:#16233b}
+    html[data-theme="dark"] .note,html[data-theme="dark"] .reqnote{background:#1c2c47;border-color:#27374f;color:#9db0c6}
+    html[data-theme="dark"] .field,html[data-theme="dark"] .fld input,html[data-theme="dark"] .fld select,html[data-theme="dark"] .fld textarea,html[data-theme="dark"] .modal-card{background:#0f1a2b;color:#e7eef7;border-color:#34465f}
+    html[data-theme="dark"] .modal-card{background:#16233b}
+    html[data-theme="dark"] #log{background:#0f1a2b}
+    html[data-theme="dark"] .bubble.bot{background:#1c2c47;border-color:#27374f;color:#e7eef7}
+    html[data-theme="dark"] .cal-cell.leave{background:#1e3354;border-color:#34527e}
+    html[data-theme="dark"] .btn-ghost{background:#16233b;color:#e7eef7;border-color:#34465f}
+    html[data-theme="dark"] table th,html[data-theme="dark"] table td{border-color:#27374f}
   </style>
 </head>
 <body>
@@ -221,6 +247,7 @@
     <div class="sep"></div>
     <span class="crumb" id="crumb">Home</span>
     <div class="sp"></div>
+    <button class="icon" id="themeBtn" title="Toggle dark mode">&#127769;</button>
     <button class="icon" title="Search">&#128269;</button>
     <button class="icon" title="Notifications">&#128276;</button>
     <div class="ava" title="Employee">EM</div>
@@ -253,7 +280,7 @@
     <div class="a-head"><div class="a-ava">SAP</div><div><div class="a-t1">Leave Assistant</div><div class="a-t2">Powered by SuccessFactors + AI</div></div><div class="sp"></div><button class="a-close" id="aClose" title="Close">&times;</button></div>
     <div id="log"></div>
     <div class="chips" id="chips"><button class="chip">How many leaves do I have?</button><button class="chip">Annual leave balance</button></div>
-    <form class="composer" id="form"><input id="input" class="field" autocomplete="off" placeholder="Type your question…" /><button id="send" class="sendbtn" type="submit" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></form>
+    <form class="composer" id="form"><input id="input" class="field" autocomplete="off" placeholder="Type or speak your question…" /><button id="mic" class="sendbtn" type="button" title="Voice input" style="background:#eef4ff;color:var(--brand-dark);box-shadow:none">🎤</button><button id="send" class="sendbtn" type="submit" title="Send"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button></form>
   </div>
 
   <script>
@@ -271,6 +298,8 @@
       {id:'profile',title:'My Profile',icon:'👤',group:'My HR',status:'live',sub:'Employee master data (Core HR)'},
       {id:'pay',title:'Compensation',icon:'💶',group:'My HR',status:'live',sub:'Pay components'},
       {id:'org',title:'Organization',icon:'🏢',group:'My HR',status:'live',sub:'Department, team & directory'},
+      {id:'team',title:'My Team',icon:'👥',group:'My HR',status:'live',sub:'Manager, peers & reporting line'},
+      {id:'calendar',title:'Leave Calendar',icon:'📅',group:'My HR',status:'live',sub:'Absences on a month grid'},
       {id:'recruiting',title:'Recruiting',icon:'🧑‍💼',group:'Talent',status:'live',sub:'Job requisitions & candidates'},
       {id:'performance',title:'Performance & Goals',icon:'🎯',group:'Talent',status:'live',sub:'Review forms & ratings'},
       {id:'succession',title:'Succession & Dev',icon:'🪜',group:'Talent',status:'na',sub:'Talent review, 9-box'},
@@ -426,6 +455,48 @@
       }catch(e){main.innerHTML=moduleHead('Payroll','')+'<div class="err">Could not load payroll: '+esc(e.message)+'</div>';}
     }
 
+    /* ---------------- My Team ---------------- */
+    async function renderTeam(){
+      crumb.textContent='My Team';main.innerHTML=moduleHead('My Team','Your manager, peers and reporting line')+skeleton();
+      try{
+        const d=await getJSON('/api/team');const m=d.manager||{};const mem=d.members||[];
+        const row=(name,sub,me)=>`<div class="li"><div class="av">${initials(name)}</div><div><div class="n">${esc(name)}${me?' <span class="pill approved">You</span>':''}</div><div class="e">${esc(sub||'')}</div></div></div>`;
+        main.innerHTML=moduleHead('My Team','Your manager, peers and reporting line')
+          +`<div class="grid2"><div class="card"><h3>Manager</h3><div class="list">${(m.name&&m.name!=='—')?row(m.name,'Manager · '+esc(m.userId||''),false):'<div style="color:var(--ink-soft)">No manager on record.</div>'}</div></div>
+            <div class="card"><h3>Team (${mem.length})</h3><div class="list">${mem.length?mem.map(x=>row(x.name,x.jobTitle,x.isMe)).join(''):'<div style="color:var(--ink-soft)">No team members found.</div>'}</div></div></div>`;
+      }catch(e){main.innerHTML=moduleHead('My Team','')+'<div class="err">Could not load team: '+esc(e.message)+'</div>';}
+    }
+
+    /* ---------------- Leave Calendar ---------------- */
+    let calMonth=null;
+    const pad=(n)=>String(n).padStart(2,'0');
+    async function renderCalendar(){
+      crumb.textContent='Leave Calendar';
+      if(!calMonth){const n=new Date();calMonth=new Date(n.getFullYear(),n.getMonth(),1);}
+      main.innerHTML=moduleHead('Leave Calendar','Your absences on a month grid')+'<div id="calbox" class="card">Loading…</div>';
+      try{ const history=(await getJSON('/api/history')).history||[]; drawCalendar(history); }
+      catch(e){ const b=document.getElementById('calbox'); if(b) b.innerHTML='<div class="err">Could not load history: '+esc(e.message)+'</div>'; }
+    }
+    function drawCalendar(history){
+      const box=document.getElementById('calbox');if(!box)return;
+      const y=calMonth.getFullYear(),mo=calMonth.getMonth();
+      const marks={};
+      history.forEach(h=>{ if(!h.startDate)return; let d=new Date(h.startDate+'T00:00:00Z'); const e=new Date((h.endDate||h.startDate)+'T00:00:00Z'); let guard=0; while(d<=e&&guard++<400){const key=d.toISOString().slice(0,10);(marks[key]=marks[key]||[]).push(h);d.setUTCDate(d.getUTCDate()+1);} });
+      const startDow=new Date(Date.UTC(y,mo,1)).getUTCDay();
+      const daysInMonth=new Date(Date.UTC(y,mo+1,0)).getUTCDate();
+      const monthName=calMonth.toLocaleString(undefined,{month:'long',year:'numeric'});
+      let cells='';['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].forEach(d=>cells+=`<div class="cal-dow">${d}</div>`);
+      for(let i=0;i<startDow;i++)cells+='<div class="cal-cell empty"></div>';
+      for(let day=1;day<=daysInMonth;day++){const key=`${y}-${pad(mo+1)}-${pad(day)}`;const hit=marks[key];
+        const tag=hit?`<span class="cal-tag" title="${esc(hit[0].timeType)}">${esc(String(hit[0].timeType).split(' ')[0])}</span>`:'';
+        cells+=`<div class="cal-cell${hit?' leave':''}"><span class="cal-num">${day}</span>${tag}</div>`;}
+      box.innerHTML=`<div class="cal-head"><button class="btn-ghost" id="calprev">‹ Prev</button><h3 style="margin:0">${esc(monthName)}</h3><button class="btn-ghost" id="calnext">Next ›</button></div>
+        <div class="cal-grid">${cells}</div>
+        <div class="note" style="margin-top:.9rem">Highlighted days are absences from your leave history (${history.length} record(s)). Use Prev/Next to browse months.</div>`;
+      document.getElementById('calprev').addEventListener('click',()=>{calMonth=new Date(y,mo-1,1);drawCalendar(history);});
+      document.getElementById('calnext').addEventListener('click',()=>{calMonth=new Date(y,mo+1,1);drawCalendar(history);});
+    }
+
     /* ---------------- Live from Zapier ---------------- */
     async function renderZapier(){
       crumb.textContent='Live from Zapier';
@@ -459,7 +530,7 @@
     }
 
     /* ---------------- Router ---------------- */
-    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting,performance:renderPerformance,payroll:renderPayroll,zapier:renderZapier};
+    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting,performance:renderPerformance,payroll:renderPayroll,zapier:renderZapier,team:renderTeam,calendar:renderCalendar};
     function route(){
       const id=(location.hash.replace(/^#\/?/,'')||'').trim();
       window.scrollTo(0,0);
@@ -501,6 +572,27 @@
     async function ask(message){addText(msgEl('me'),message);input.value='';send.disabled=true;const stack=msgEl('bot');const typing=addTyping(stack);try{const data=await(await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({message})})).json();const r=data.value||data;typing.remove();addText(stack,r.reply||(r.error&&r.error.message)||'No response.');addTrace(stack,r.trace,r.totalMs);}catch(err){typing.remove();addText(stack,'Error: '+err.message);}finally{send.disabled=false;input.focus();}}
     document.getElementById('form').addEventListener('submit',e=>{e.preventDefault();const m=input.value.trim();if(m)ask(m);});
     document.getElementById('chips').addEventListener('click',e=>{if(e.target.classList.contains('chip'))ask(e.target.textContent.trim());});
+
+    /* ---------------- Voice input ---------------- */
+    (function(){
+      const mic=document.getElementById('mic');
+      const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+      if(!SR){ mic.style.display='none'; return; }
+      const rec=new SR(); rec.lang='en-US'; rec.interimResults=false; rec.maxAlternatives=1;
+      let on=false;
+      mic.addEventListener('click',()=>{ if(on){rec.stop();return;} try{rec.start();on=true;mic.textContent='⏺';}catch(e){} });
+      rec.onresult=(e)=>{ const txt=e.results[0][0].transcript; input.value=txt; if(txt.trim())ask(txt.trim()); };
+      rec.onerror=()=>{ on=false;mic.textContent='🎤'; };
+      rec.onend=()=>{ on=false;mic.textContent='🎤'; };
+    })();
+
+    /* ---------------- Dark mode ---------------- */
+    (function(){
+      const btn=document.getElementById('themeBtn');
+      const apply=(t)=>{ document.documentElement.dataset.theme=t; btn.innerHTML=t==='dark'?'&#9728;':'&#127769;'; };
+      apply(localStorage.getItem('theme')||'light');
+      btn.addEventListener('click',()=>{ const t=document.documentElement.dataset.theme==='dark'?'light':'dark'; localStorage.setItem('theme',t); apply(t); });
+    })();
 
     /* init */
     route();

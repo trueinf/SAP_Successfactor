@@ -38,6 +38,7 @@ cds.on('bootstrap', (app) => {
   app.get('/api/recruiting', handle(async () => await sf.getRecruiting()))
   app.get('/api/performance', handle(async () => await sf.getPerformance(currentUser())))
   app.get('/api/payroll', handle(async () => await sf.getPayroll(currentUser())))
+  app.get('/api/team', handle(async () => await sf.getTeam(currentUser())))
 
   app.post('/api/request', express.json(), async (req, res) => {
     try {

@@ -444,7 +444,49 @@ async function getPayroll(userId) {
   return { runs, sample }
 }
 
+// ---- Module: My Team / Org (manager + peers) -------------------------------
+
+async function resolveName(uid) {
+  try {
+    const u = (await sfGet(`User?$filter=userId eq '${uid}'&$select=defaultFullName,firstName,lastName&$format=json`))[0]
+    if (u) return u.defaultFullName || [u.firstName, u.lastName].filter(Boolean).join(' ') || `Employee ${uid}`
+  } catch {}
+  return `Employee ${uid}`
+}
+
+async function getTeam(userId) {
+  if (MODE === 'mock') {
+    return {
+      manager: { userId: '103187', name: 'Alex Manager' },
+      members: [
+        { userId, name: 'Jordan Doe', jobTitle: 'HR Business Partner', isMe: true },
+        { userId: '103198', name: 'Sam Payroll', jobTitle: 'Payroll Admin', isMe: false },
+      ],
+    }
+  }
+  const job = (await sfGet(`EmpJob?$filter=userId eq '${userId}'&$orderby=startDate desc&$top=1&$format=json`))[0] || {}
+  const mgrId = job.managerId
+  const manager = { userId: mgrId || '', name: mgrId ? await resolveName(mgrId) : '—' }
+
+  let members = []
+  if (mgrId) {
+    const rows = await sfGet(`EmpJob?$filter=managerId eq '${mgrId}'&$select=userId,jobTitle&$top=25&$format=json`)
+    // de-dup by userId (a user can have multiple EmpJob rows)
+    const seen = new Set()
+    const unique = rows.filter((r) => (seen.has(r.userId) ? false : seen.add(r.userId)))
+    members = await Promise.all(
+      unique.map(async (r) => ({
+        userId: r.userId,
+        name: await resolveName(r.userId),
+        jobTitle: r.jobTitle || '—',
+        isMe: r.userId === userId,
+      }))
+    )
+  }
+  return { manager, members }
+}
+
 module.exports = {
   getLeaveBalances, getLeaveHistory, submitLeave, sfInfo,
-  getProfile, getPay, getOrg, getRecruiting, getPerformance, getPayroll,
+  getProfile, getPay, getOrg, getRecruiting, getPerformance, getPayroll, getTeam,
 }

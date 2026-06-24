@@ -54,17 +54,23 @@ if (!llmReady) {
 const INTENT_SCHEMA = {
   type: 'object',
   properties: {
-    type: { type: 'string', enum: ['leave_balance', 'unsupported'] },
+    type: {
+      type: 'string',
+      enum: ['leave_balance', 'leave_history', 'profile', 'pay', 'payroll', 'recruiting', 'team', 'unsupported'],
+    },
     leaveType: {
       type: 'string',
-      description: "Specific leave type if mentioned, e.g. 'annual', 'sick', 'casual'. Omit if not specified.",
+      description: "For leave_balance only: specific type if mentioned, e.g. 'annual', 'sick', 'casual'. Omit otherwise.",
     },
   },
   required: ['type'],
 }
 const INTENT_DESCRIPTION =
-  "Classify an employee's HR question. Use 'leave_balance' when they ask how much " +
-  "leave / vacation / time off / PTO they have left. Otherwise use 'unsupported'."
+  "Classify an employee's HR question into one topic: " +
+  "leave_balance (how much leave/PTO is left), leave_history (past/upcoming absences), " +
+  "profile (their job, department, manager, hire date — Core HR), pay (pay components / compensation), " +
+  "payroll (payslips / pay statements / payroll runs), recruiting (job requisitions, candidates), " +
+  "team (their manager, peers, who reports to whom). Use 'unsupported' if none fit."
 
 const PHRASE_SYSTEM =
   'You are a concise, friendly HR assistant. Answer the user using ONLY the leave ' +
@@ -84,15 +90,15 @@ async function extractIntent(message) {
   return fallbackIntent(message)
 }
 
-async function phraseAnswer(question, accounts) {
+async function phraseAnswer(question, data, kind) {
   try {
-    if (PROVIDER === 'genai-hub') return await genaiPhrase(question, accounts)
-    if (PROVIDER === 'openai' && hasOpenAI) return await openaiPhrase(question, accounts)
-    if (PROVIDER === 'anthropic' && hasAnthropic) return await anthropicPhrase(question, accounts)
+    if (PROVIDER === 'genai-hub') return await genaiPhrase(question, data, kind)
+    if (PROVIDER === 'openai' && hasOpenAI) return await openaiPhrase(question, data, kind)
+    if (PROVIDER === 'anthropic' && hasAnthropic) return await anthropicPhrase(question, data, kind)
   } catch (err) {
     console.warn('[llm] phrasing failed, using fallback:', err.message)
   }
-  return fallbackPhrase(accounts)
+  return fallbackPhrase(data, kind)
 }
 
 // ---- OpenAI implementation -------------------------------------------------
@@ -112,7 +118,7 @@ async function openaiIntent(message) {
   return JSON.parse(call.function.arguments)
 }
 
-async function openaiPhrase(question, accounts) {
+async function openaiPhrase(question, data, kind) {
   const model = process.env.OPENAI_MODEL || 'gpt-4o-mini'
   const resp = await openaiClient().chat.completions.create({
     model,
@@ -122,12 +128,12 @@ async function openaiPhrase(question, accounts) {
         role: 'user',
         content:
           `The employee asked: "${question}"\n\n` +
-          `Verified leave data (JSON, authoritative):\n${JSON.stringify(accounts, null, 2)}\n\n` +
+          `Verified SuccessFactors data (JSON, authoritative):\n${JSON.stringify(data, null, 2)}\n\n` +
           'Answer their question using only this data.',
       },
     ],
   })
-  return (resp.choices[0]?.message?.content || '').trim() || fallbackPhrase(accounts)
+  return (resp.choices[0]?.message?.content || '').trim() || fallbackPhrase(data, kind)
 }
 
 // ---- Anthropic implementation ----------------------------------------------
@@ -145,7 +151,7 @@ async function anthropicIntent(message) {
   return toolUse ? toolUse.input : fallbackIntent(message)
 }
 
-async function anthropicPhrase(question, accounts) {
+async function anthropicPhrase(question, data, kind) {
   const model = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
   const resp = await anthropicClient().messages.create({
     model,
@@ -156,16 +162,17 @@ async function anthropicPhrase(question, accounts) {
         role: 'user',
         content:
           `The employee asked: "${question}"\n\n` +
-          `Verified leave data (JSON, authoritative):\n${JSON.stringify(accounts, null, 2)}\n\n` +
+          `Verified SuccessFactors data (JSON, authoritative):\n${JSON.stringify(data, null, 2)}\n\n` +
           'Answer their question using only this data.',
       },
     ],
   })
-  return resp.content
+  const text = resp.content
     .filter((c) => c.type === 'text')
     .map((c) => c.text)
     .join('\n')
     .trim()
+  return text || fallbackPhrase(data, kind)
 }
 
 // ---- SAP Generative AI Hub implementation (SAP AI Core) --------------------
@@ -198,27 +205,33 @@ async function genaiIntent(message) {
   return match ? JSON.parse(match[0]) : fallbackIntent(message)
 }
 
-async function genaiPhrase(question, accounts) {
+async function genaiPhrase(question, data, kind) {
   const client = orchestrationClientFor([
     { role: 'system', content: PHRASE_SYSTEM },
     {
       role: 'user',
       content:
         'The employee asked: "{{?question}}"\n\n' +
-        'Verified leave data (JSON, authoritative):\n{{?data}}\n\n' +
+        'Verified SuccessFactors data (JSON, authoritative):\n{{?data}}\n\n' +
         'Answer their question using only this data.',
     },
   ])
   const res = await client.chatCompletion({
-    inputParams: { question, data: JSON.stringify(accounts, null, 2) },
+    inputParams: { question, data: JSON.stringify(data, null, 2) },
   })
-  return (res.getContent() || '').trim() || fallbackPhrase(accounts)
+  return (res.getContent() || '').trim() || fallbackPhrase(data, kind)
 }
 
 // ---- Deterministic fallbacks (no API key needed) ---------------------------
 
 function fallbackIntent(message) {
   const m = message.toLowerCase()
+  if (/(manager|reports? to|my team|team|peers|colleagues|org chart)/.test(m)) return { type: 'team' }
+  if (/(profile|my (role|job|title|department|position)|who am i|hire date|cost center)/.test(m)) return { type: 'profile' }
+  if (/(payslip|payroll|pay statement|pay run|gross|net pay)/.test(m)) return { type: 'payroll' }
+  if (/(pay|compensation|salary|allowance|bonus|pay component)/.test(m)) return { type: 'pay' }
+  if (/(history|past leave|previous leave|absence|took leave|applied for leave|upcoming leave)/.test(m)) return { type: 'leave_history' }
+  if (/(requisition|candidate|recruit|job opening|hiring|applicant)/.test(m)) return { type: 'recruiting' }
   if (/(leave|vacation|holiday|time ?off|days off|pto|sick|balance|remaining)/.test(m)) {
     let leaveType
     if (/sick/.test(m)) leaveType = 'sick'
@@ -229,10 +242,37 @@ function fallbackIntent(message) {
   return { type: 'unsupported' }
 }
 
-function fallbackPhrase(accounts) {
-  if (!accounts || accounts.length === 0) return "I couldn't find any leave records for you."
-  const lines = accounts.map((a) => `• ${a.accountType}: ${a.balance} ${a.unit} remaining (as of ${a.asOf})`)
-  return `Here is your leave balance:\n${lines.join('\n')}`
+// kind-aware template fallback (used when no LLM is configured)
+function fallbackPhrase(data, kind) {
+  if (kind === 'profile' && data) {
+    return `You are ${data.name}, ${data.jobTitle} in ${data.department}. Manager: ${data.managerName}. Hire date: ${data.hireDate}.`
+  }
+  if (kind === 'team' && data) {
+    const names = (data.members || []).map((x) => x.name + (x.isMe ? ' (you)' : '')).join(', ')
+    return `Your manager is ${data.manager ? data.manager.name : '—'}. Your team: ${names || '—'}.`
+  }
+  if (kind === 'pay') {
+    const c = data || []
+    if (!c.length) return 'No pay components found.'
+    return 'Your pay components:\n' + c.map((x) => `• ${x.component}: ${x.value} ${x.currency} (${x.frequency})`).join('\n')
+  }
+  if (kind === 'payroll') {
+    const r = data || []
+    if (!r.length) return 'No pay statements found.'
+    return 'Recent pay statements:\n' + r.slice(0, 5).map((x) => `• ${x.payDate} (${x.period}) — ${x.status}`).join('\n')
+  }
+  if (kind === 'recruiting' && data) {
+    return `Recruiting: ${data.requisitions.length} job requisition(s) and ${data.candidates.length} candidate(s).`
+  }
+  if (kind === 'leave_history') {
+    const h = data || []
+    if (!h.length) return 'No leave records found.'
+    return 'Recent leave:\n' + h.slice(0, 6).map((x) => `• ${x.timeType}: ${x.startDate}${x.startDate !== x.endDate ? ' → ' + x.endDate : ''} (${x.days}d) — ${x.status}`).join('\n')
+  }
+  // default: leave_balance (accounts array)
+  const accounts = Array.isArray(data) ? data : []
+  if (!accounts.length) return "I couldn't find any matching records."
+  return 'Here is your leave balance:\n' + accounts.map((a) => `• ${a.accountType}: ${a.balance} ${a.unit} remaining (as of ${a.asOf})`).join('\n')
 }
 
 // Describes the active NLP engine — used by the trace.

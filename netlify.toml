@@ -78,3 +78,9 @@
   to = "/.netlify/functions/payroll"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/team"
+  to = "/.netlify/functions/team"
+  status = 200
+  force = true
