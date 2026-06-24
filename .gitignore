@@ -5,3 +5,5 @@ gen/
 .cdsrc-private.json
 dist/
 mta_archives/
+deck/
+*.pdf
