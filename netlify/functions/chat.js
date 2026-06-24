@@ -12,8 +12,7 @@
  *   LLM_PROVIDER, OPENAI_API_KEY, OPENAI_MODEL,
  *   SF_MODE (use "sandbox" on Netlify), SF_API_KEY, SF_USER_ID
  */
-const { extractIntent, phraseAnswer } = require('../../srv/lib/llm')
-const { getLeaveBalances } = require('../../srv/lib/successfactors')
+const { answer } = require('../../srv/lib/assistant')
 
 function json(statusCode, obj) {
   return {
@@ -42,18 +41,8 @@ exports.handler = async (event) => {
   const userId = process.env.SF_USER_ID || process.env.MOCK_USER_ID || '103189'
 
   try {
-    const intent = await extractIntent(message)
-
-    if (intent.type === 'leave_balance') {
-      const accounts = await getLeaveBalances(userId, intent.leaveType)
-      const reply = await phraseAnswer(message, accounts)
-      return json(200, { reply, intent: intent.type })
-    }
-
-    return json(200, {
-      reply: 'I can help you check your leave balance. Try asking: "How many vacation days do I have left?"',
-      intent: intent.type || 'unsupported',
-    })
+    const result = await answer(message, userId)
+    return json(200, result)
   } catch (err) {
     return json(502, { error: `Could not reach the HR system: ${err.message}` })
   }

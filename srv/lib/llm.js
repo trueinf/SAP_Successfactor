@@ -176,4 +176,13 @@ function fallbackPhrase(accounts) {
   return `Here is your leave balance:\n${lines.join('\n')}`
 }
 
-module.exports = { extractIntent, phraseAnswer }
+// Describes the active NLP engine — used by the trace.
+function llmInfo() {
+  const model =
+    PROVIDER === 'anthropic'
+      ? process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
+      : process.env.OPENAI_MODEL || 'gpt-4o-mini'
+  return { provider: PROVIDER, model, usingLLM: llmReady }
+}
+
+module.exports = { extractIntent, phraseAnswer, llmInfo }

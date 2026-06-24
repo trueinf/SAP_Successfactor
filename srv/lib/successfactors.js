@@ -154,4 +154,14 @@ function prettyType(code) {
     .replace(/\b\w/g, (c) => c.toUpperCase())
 }
 
-module.exports = { getLeaveBalances }
+// Describes the active data source — used by the trace.
+function sfInfo() {
+  const sources = {
+    mock: 'Mock data (no network)',
+    sandbox: 'Business Accelerator Hub sandbox',
+    real: 'Real tenant via BTP Destination',
+  }
+  return { mode: MODE, entity: process.env.SF_ENTITY || 'TimeAccount', source: sources[MODE] || MODE }
+}
+
+module.exports = { getLeaveBalances, sfInfo }

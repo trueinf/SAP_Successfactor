@@ -3,152 +3,271 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Leave Assistant</title>
-
-  <!-- UI5 Web Components global config: theme + language -->
-  <script data-ui5-config type="application/json">
-    { "theme": "sap_horizon", "language": "en" }
-  </script>
-
-  <!-- Load UI5 Web Components (official SAP library) from CDN via esm.sh.
-       esm.sh resolves all transitive dependencies, so no build step is needed. -->
-  <script type="module">
-    const V = "@2";                         // UI5 Web Components v2.x
-    const WC  = (m) => import(`https://esm.sh/@ui5/webcomponents${V}/dist/${m}.js`);
-    const FIO = (m) => import(`https://esm.sh/@ui5/webcomponents-fiori${V}/dist/${m}.js`);
-    const ICO = (m) => import(`https://esm.sh/@ui5/webcomponents-icons${V}/dist/${m}.js`);
-
-    // Components + icons used on this page
-    await Promise.all([
-      FIO("ShellBar"),
-      WC("Card"), WC("CardHeader"),
-      WC("Input"), WC("Button"), WC("Avatar"), WC("Tag"), WC("BusyIndicator"),
-      ICO("search"), ICO("sys-help"), ICO("bell"), ICO("employee"),
-    ]);
-
-    // Signal that components are ready (used to hide the loading state)
-    document.documentElement.classList.add("ui5-ready");
-  </script>
-
+  <title>Leave Assistant · SAP SuccessFactors</title>
   <style>
+    :root {
+      --brand:        #0070f2;
+      --brand-dark:   #0040b0;
+      --brand-2:      #0a6ed1;
+      --ink:          #1a2733;
+      --ink-soft:     #5b6b7b;
+      --line:         #e3e8ef;
+      --bot-bg:       #ffffff;
+      --page-1:       #eef2f7;
+      --page-2:       #e3ebf5;
+      --ok:           #1a8754;
+      --font: "72", "Segoe UI", -apple-system, Roboto, Helvetica, Arial, sans-serif;
+      --shadow-card: 0 10px 40px rgba(18, 42, 71, .12);
+      --shadow-soft: 0 1px 3px rgba(18, 42, 71, .08);
+    }
+    * { box-sizing: border-box; }
     html, body { height: 100%; margin: 0; }
     body {
-      font-family: "72", "72full", -apple-system, "Segoe UI", Arial, sans-serif;
-      background: var(--sapBackgroundColor, #f5f6f7);
-      display: flex; flex-direction: column;
+      font-family: var(--font); color: var(--ink);
+      background: radial-gradient(1200px 600px at 50% -10%, var(--page-2), var(--page-1));
+      display: flex; align-items: center; justify-content: center; padding: 1.25rem;
     }
-    /* hide app until UI5 components are defined, to avoid a flash of raw markup */
-    #app { visibility: hidden; flex: 1; display: flex; flex-direction: column; min-height: 0; }
-    html.ui5-ready #app { visibility: visible; }
-    #loading {
-      position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
-      color: #556b82; font-family: "72", "Segoe UI", Arial, sans-serif; gap: .5rem;
+
+    .app {
+      width: min(760px, 100%); height: min(860px, 100%);
+      background: #fff; border-radius: 1.25rem; overflow: hidden;
+      display: flex; flex-direction: column; box-shadow: var(--shadow-card);
+      border: 1px solid rgba(255,255,255,.6);
     }
-    html.ui5-ready #loading { display: none; }
 
-    .page { flex: 1; min-height: 0; display: flex; justify-content: center; padding: 1.25rem; }
-    .chat-card { width: min(720px, 100%); height: 100%; display: flex; flex-direction: column; }
-    /* let the card body flex so the log scrolls */
-    .chat-card::part(content) { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+    /* ---- Header ---- */
+    header {
+      background: linear-gradient(135deg, var(--brand-2) 0%, var(--brand-dark) 100%);
+      color: #fff; padding: 1rem 1.25rem; display: flex; align-items: center; gap: .85rem;
+    }
+    .logo { height: 1.9rem; width: auto; filter: drop-shadow(0 1px 1px rgba(0,0,0,.25)); }
+    .htext { display: flex; flex-direction: column; line-height: 1.2; }
+    .htext .t1 { font-weight: 700; font-size: 1.05rem; letter-spacing: .2px; }
+    .htext .t2 { font-size: .78rem; opacity: .85; }
+    .hspace { flex: 1; }
+    .status {
+      display: inline-flex; align-items: center; gap: .4rem; font-size: .72rem;
+      background: rgba(255,255,255,.16); padding: .3rem .6rem; border-radius: 1rem; backdrop-filter: blur(4px);
+    }
+    .dot { width: .5rem; height: .5rem; border-radius: 50%; background: #3ad29f; box-shadow: 0 0 0 0 rgba(58,210,159,.7); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%{box-shadow:0 0 0 0 rgba(58,210,159,.6)} 70%{box-shadow:0 0 0 .4rem rgba(58,210,159,0)} 100%{box-shadow:0 0 0 0 rgba(58,210,159,0)} }
 
-    #log { flex: 1; overflow-y: auto; padding: 1rem 1.25rem; display: flex; flex-direction: column; gap: .75rem; }
-    .row { display: flex; }
-    .row.me { justify-content: flex-end; }
+    /* ---- Chat log ---- */
+    #log { flex: 1; overflow-y: auto; padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; background: linear-gradient(180deg,#fafbfd,#f4f7fb); }
+    .msg { display: flex; gap: .65rem; max-width: 88%; animation: rise .28s ease both; }
+    .msg.me { align-self: flex-end; flex-direction: row-reverse; }
+    @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+    .avatar {
+      flex: 0 0 auto; width: 2rem; height: 2rem; border-radius: 50%; display: flex;
+      align-items: center; justify-content: center; font-size: .72rem; font-weight: 700; margin-top: .1rem;
+    }
+    .avatar.bot { background: #e8f1fe; color: var(--brand-dark); border: 1px solid #d4e6fd; }
+    .avatar.me  { background: var(--brand); color: #fff; }
+    .stack { display: flex; flex-direction: column; gap: .3rem; min-width: 0; }
     .bubble {
-      max-width: 78%; padding: .625rem .875rem; line-height: 1.45; white-space: pre-wrap;
-      font-size: .875rem; border-radius: .75rem;
+      padding: .7rem .9rem; line-height: 1.5; white-space: pre-wrap; word-wrap: break-word;
+      font-size: .9rem; border-radius: 1rem; box-shadow: var(--shadow-soft);
     }
-    .bubble.me  { background: var(--sapButton_Emphasized_Background, #0070f2); color: #fff; border-bottom-right-radius: .25rem; }
-    .bubble.bot { background: #f0f3f6; color: var(--sapTextColor, #1d2d3e); border: 1px solid #e3e7eb; border-bottom-left-radius: .25rem; }
+    .msg.bot .bubble { background: var(--bot-bg); border: 1px solid var(--line); border-top-left-radius: .35rem; }
+    .msg.me  .bubble { background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%); color: #fff; border-top-right-radius: .35rem; }
+    .time { font-size: .68rem; color: var(--ink-soft); padding: 0 .35rem; }
+    .msg.me .time { text-align: right; }
 
-    .typing { display: inline-flex; gap: .25rem; align-items: center; }
-    .typing span { width: .4rem; height: .4rem; border-radius: 50%; background: #9aa8b5; animation: blink 1.2s infinite both; }
-    .typing span:nth-child(2){ animation-delay:.2s } .typing span:nth-child(3){ animation-delay:.4s }
-    @keyframes blink { 0%,80%,100%{opacity:.25} 40%{opacity:1} }
+    /* typing */
+    .typing { display: inline-flex; gap: .28rem; padding: .25rem 0; }
+    .typing i { width: .45rem; height: .45rem; border-radius: 50%; background: #b3c0cf; animation: blink 1.2s infinite both; }
+    .typing i:nth-child(2){animation-delay:.18s} .typing i:nth-child(3){animation-delay:.36s}
+    @keyframes blink { 0%,80%,100%{opacity:.3;transform:translateY(0)} 40%{opacity:1;transform:translateY(-2px)} }
 
-    .chips { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0 1.25rem .5rem; }
-    .composer { display: flex; gap: .5rem; padding: .75rem 1.25rem; align-items: center; }
-    .composer ui5-input { flex: 1; }
+    /* ---- Trace ---- */
+    .trace { margin-top: .15rem; }
+    .trace-toggle {
+      display: inline-flex; align-items: center; gap: .4rem; cursor: pointer;
+      font-family: var(--font); font-size: .74rem; color: var(--brand-dark);
+      background: #eef4ff; border: 1px solid #d8e6fb; padding: .28rem .6rem; border-radius: 1rem;
+    }
+    .trace-toggle:hover { background: #e3eefe; }
+    .trace-toggle .caret { transition: transform .2s; }
+    .trace.open .trace-toggle .caret { transform: rotate(180deg); }
+    .trace-body { display: none; margin-top: .55rem; padding: .6rem .25rem .35rem .25rem; }
+    .trace.open .trace-body { display: block; animation: rise .2s ease both; }
 
-    .sap-logo { height: 1.5rem; width: auto; }
+    .tstep { position: relative; padding: 0 0 .85rem 1.9rem; }
+    .tstep::before { content: ""; position: absolute; left: .68rem; top: 1.5rem; bottom: -.1rem; width: 2px; background: #dbe5f1; }
+    .tstep:last-of-type::before { display: none; }
+    .tdot {
+      position: absolute; left: 0; top: 0; width: 1.5rem; height: 1.5rem; border-radius: 50%;
+      background: #fff; border: 2px solid #cfe0f6; display: flex; align-items: center; justify-content: center; font-size: .8rem;
+    }
+    .thead { display: flex; align-items: baseline; gap: .5rem; }
+    .ttitle { font-weight: 600; font-size: .82rem; }
+    .tms { font-size: .68rem; color: var(--ink-soft); background: #f0f3f7; padding: .05rem .4rem; border-radius: .5rem; }
+    .tengine { font-size: .72rem; color: var(--brand-dark); margin: .1rem 0; font-weight: 500; }
+    .tdetail { font-size: .76rem; color: var(--ink-soft); }
+    .ttotal { font-size: .74rem; color: var(--ink-soft); padding-left: 1.9rem; }
+    .ttotal b { color: var(--ink); }
+
+    /* ---- Quick chips ---- */
+    .chips { display: flex; flex-wrap: wrap; gap: .5rem; padding: .75rem 1.25rem 0; }
+    .chip {
+      font-family: var(--font); font-size: .78rem; cursor: pointer; color: var(--brand);
+      background: #fff; border: 1px solid #cfe0f6; border-radius: 1rem; padding: .35rem .75rem; transition: .15s;
+    }
+    .chip:hover { background: var(--brand); color: #fff; border-color: var(--brand); }
+
+    /* ---- Composer ---- */
+    .composer { display: flex; gap: .6rem; padding: .85rem 1.25rem 1.1rem; align-items: center; }
+    .field {
+      flex: 1; padding: .7rem .9rem; font-size: .9rem; font-family: var(--font); color: var(--ink);
+      border: 1px solid #cdd7e3; border-radius: .85rem; outline: none; background: #fff; transition: .15s;
+    }
+    .field:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(0,112,242,.15); }
+    .send {
+      width: 2.7rem; height: 2.7rem; border: 0; border-radius: .85rem; cursor: pointer;
+      background: linear-gradient(135deg, var(--brand) 0%, var(--brand-2) 100%); color: #fff;
+      display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 12px rgba(0,112,242,.35);
+      transition: .15s;
+    }
+    .send:hover:not(:disabled) { transform: translateY(-1px); }
+    .send:disabled { opacity: .5; cursor: default; box-shadow: none; }
+    .send svg { width: 1.15rem; height: 1.15rem; }
   </style>
 </head>
 <body>
-  <div id="loading">Loading SAP Fiori components…</div>
-
-  <div id="app">
-    <!-- Real UI5 ShellBar -->
-    <ui5-shellbar id="shell"
-      primary-title="Leave Assistant"
-      secondary-title="SuccessFactors · Time Off"
-      show-notifications notifications-count="1">
-      <!-- recreated SAP logo in the logo slot -->
-      <svg slot="logo" class="sap-logo" viewBox="0 0 110 54" xmlns="http://www.w3.org/2000/svg" aria-label="SAP">
+  <div class="app">
+    <header>
+      <svg class="logo" viewBox="0 0 110 54" xmlns="http://www.w3.org/2000/svg" aria-label="SAP">
         <defs>
-          <linearGradient id="b" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1c9be6"/><stop offset="1" stop-color="#0a6ed1"/></linearGradient>
-          <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f6d365"/><stop offset="1" stop-color="#e9b000"/></linearGradient>
+          <linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f8d979"/><stop offset="1" stop-color="#e9b000"/></linearGradient>
         </defs>
-        <polygon points="0,0 110,0 88,54 0,54" fill="url(#b)"/>
-        <text x="12" y="39" font-family="Arial, sans-serif" font-size="34" font-weight="800" fill="url(#g)">SAP</text>
+        <polygon points="0,0 110,0 88,54 0,54" fill="rgba(255,255,255,.16)"/>
+        <text x="11" y="39" font-family="Arial, sans-serif" font-size="34" font-weight="800" fill="url(#g)">SAP</text>
       </svg>
-      <ui5-shellbar-item icon="search" text="Search"></ui5-shellbar-item>
-      <ui5-shellbar-item icon="sys-help" text="Help"></ui5-shellbar-item>
-      <ui5-avatar slot="profile" initials="EM" color-scheme="Accent6"></ui5-avatar>
-    </ui5-shellbar>
+      <div class="htext">
+        <span class="t1">Leave Assistant</span>
+        <span class="t2">SuccessFactors · Time Off</span>
+      </div>
+      <div class="hspace"></div>
+      <span class="status"><span class="dot"></span> Connected</span>
+    </header>
 
-    <div class="page">
-      <ui5-card class="chat-card">
-        <ui5-card-header slot="header" title-text="My Leave Assistant"
-          subtitle-text="Ask about your leave balance in plain language."></ui5-card-header>
-
-        <div id="log">
-          <div class="row"><div class="bubble bot">Hi! 👋 I can check your leave balances from SAP SuccessFactors. What would you like to know?</div></div>
+    <div id="log">
+      <div class="msg bot">
+        <div class="avatar bot">SAP</div>
+        <div class="stack">
+          <div class="bubble">Hi! 👋 I can check your leave balances from SAP SuccessFactors. Ask me anything — and tap <b>“How I got this”</b> under any answer to see the steps behind it.</div>
         </div>
-
-        <div class="chips" id="chips">
-          <ui5-button design="Transparent" class="chip">How many leaves do I have?</ui5-button>
-          <ui5-button design="Transparent" class="chip">Annual leave balance</ui5-button>
-          <ui5-button design="Transparent" class="chip">Do I have any sick leave left?</ui5-button>
-        </div>
-
-        <div class="composer">
-          <ui5-input id="input" placeholder="Type your question…"></ui5-input>
-          <ui5-button id="send" design="Emphasized">Send</ui5-button>
-        </div>
-      </ui5-card>
+      </div>
     </div>
+
+    <div class="chips" id="chips">
+      <button class="chip">How many leaves do I have?</button>
+      <button class="chip">Annual leave balance</button>
+      <button class="chip">Do I have any sick leave left?</button>
+    </div>
+
+    <form class="composer" id="form">
+      <input id="input" class="field" autocomplete="off" placeholder="Type your question…" />
+      <button id="send" class="send" type="submit" title="Send">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+      </button>
+    </form>
   </div>
 
   <script>
-    const log = document.getElementById('log');
+    const log   = document.getElementById('log');
+    const form  = document.getElementById('form');
     const input = document.getElementById('input');
-    const send = document.getElementById('send');
+    const send  = document.getElementById('send');
 
-    function addRow(text, who) {
-      const row = document.createElement('div');
-      row.className = 'row ' + who;
-      const bubble = document.createElement('div');
-      bubble.className = 'bubble ' + who;
-      bubble.textContent = text;
-      row.appendChild(bubble);
-      log.appendChild(row);
+    const now = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const fmtMs = (ms) => ms >= 1000 ? (ms / 1000).toFixed(2) + 's' : Math.round(ms) + 'ms';
+
+    function msgEl(who) {
+      const msg = document.createElement('div');
+      msg.className = 'msg ' + who;
+      const av = document.createElement('div');
+      av.className = 'avatar ' + who;
+      av.textContent = who === 'bot' ? 'SAP' : 'ME';
+      const stack = document.createElement('div');
+      stack.className = 'stack';
+      msg.appendChild(av); msg.appendChild(stack);
+      log.appendChild(msg);
       log.scrollTop = log.scrollHeight;
-      return bubble;
+      return stack;
     }
-    function addTyping() {
-      const row = document.createElement('div');
-      row.className = 'row bot';
-      row.innerHTML = '<div class="bubble bot"><span class="typing"><span></span><span></span><span></span></span></div>';
-      log.appendChild(row);
+
+    function addText(stack, text, withTime) {
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      b.textContent = text;
+      stack.appendChild(b);
+      if (withTime) {
+        const t = document.createElement('div');
+        t.className = 'time';
+        t.textContent = now();
+        stack.appendChild(t);
+      }
       log.scrollTop = log.scrollHeight;
-      return row;
+      return b;
+    }
+
+    function addTyping(stack) {
+      const b = document.createElement('div');
+      b.className = 'bubble';
+      b.innerHTML = '<span class="typing"><i></i><i></i><i></i></span>';
+      stack.appendChild(b);
+      log.scrollTop = log.scrollHeight;
+      return b;
+    }
+
+    function addTrace(stack, trace, totalMs) {
+      if (!trace || !trace.length) return;
+      const wrap = document.createElement('div');
+      wrap.className = 'trace';
+
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'trace-toggle';
+      toggle.innerHTML = '🔍 How I got this · ' + fmtMs(totalMs || 0) + ' <span class="caret">▾</span>';
+      toggle.addEventListener('click', () => wrap.classList.toggle('open'));
+
+      const body = document.createElement('div');
+      body.className = 'trace-body';
+
+      const ICONS = { intent: '🧠', fetch: '🗄️', phrase: '✍️' };
+      trace.forEach((s) => {
+        const step = document.createElement('div');
+        step.className = 'tstep';
+        const dot = document.createElement('div'); dot.className = 'tdot'; dot.textContent = ICONS[s.step] || '•';
+        const head = document.createElement('div'); head.className = 'thead';
+        const title = document.createElement('span'); title.className = 'ttitle'; title.textContent = s.title || s.step;
+        const ms = document.createElement('span'); ms.className = 'tms'; ms.textContent = fmtMs(s.ms || 0);
+        head.appendChild(title); head.appendChild(ms);
+        const eng = document.createElement('div'); eng.className = 'tengine'; eng.textContent = s.engine || '';
+        const det = document.createElement('div'); det.className = 'tdetail'; det.textContent = s.detail || '';
+        step.appendChild(dot); step.appendChild(head); step.appendChild(eng); step.appendChild(det);
+        body.appendChild(step);
+      });
+
+      const total = document.createElement('div');
+      total.className = 'ttotal';
+      total.innerHTML = 'Total time: <b>' + fmtMs(totalMs || 0) + '</b>';
+      body.appendChild(total);
+
+      wrap.appendChild(toggle); wrap.appendChild(body);
+      stack.appendChild(wrap);
+      log.scrollTop = log.scrollHeight;
     }
 
     async function ask(message) {
-      addRow(message, 'me');
+      addText(msgEl('me'), message, true);
       input.value = '';
       send.disabled = true;
-      const typing = addTyping();
+
+      const stack = msgEl('bot');
+      const typing = addTyping(stack);
+
       try {
         const res = await fetch('/api/chat', {
           method: 'POST',
@@ -158,29 +277,26 @@
         const data = await res.json();
         const result = data.value || data;
         typing.remove();
-        addRow(result.reply || (result.error && result.error.message) || 'No response.', 'bot');
+        addText(stack, result.reply || (result.error && result.error.message) || 'No response.', true);
+        addTrace(stack, result.trace, result.totalMs);
       } catch (err) {
         typing.remove();
-        addRow('Error: ' + err.message, 'bot');
+        addText(stack, 'Error: ' + err.message, true);
       } finally {
         send.disabled = false;
         input.focus();
       }
     }
 
-    function submit() {
-      const message = (input.value || '').trim();
-      if (message) ask(message);
-    }
-
-    send.addEventListener('click', submit);
-    // ui5-input: submit on Enter
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submit(); } });
-    // quick-reply chips
-    document.getElementById('chips').addEventListener('click', (e) => {
-      const btn = e.target.closest('.chip');
-      if (btn) ask(btn.textContent.trim());
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const m = input.value.trim();
+      if (m) ask(m);
     });
+    document.getElementById('chips').addEventListener('click', (e) => {
+      if (e.target.classList.contains('chip')) ask(e.target.textContent.trim());
+    });
+    input.focus();
   </script>
 </body>
 </html>
