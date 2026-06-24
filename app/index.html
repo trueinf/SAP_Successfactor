@@ -224,7 +224,7 @@
       {id:'pay',title:'Compensation',icon:'💶',group:'My HR',status:'live',sub:'Pay components'},
       {id:'org',title:'Organization',icon:'🏢',group:'My HR',status:'live',sub:'Department, team & directory'},
       {id:'recruiting',title:'Recruiting',icon:'🧑‍💼',group:'Talent',status:'live',sub:'Job requisitions & candidates'},
-      {id:'performance',title:'Performance & Goals',icon:'🎯',group:'Talent',status:'demo',sub:'Goals, reviews, feedback'},
+      {id:'performance',title:'Performance & Goals',icon:'🎯',group:'Talent',status:'live',sub:'Review forms & ratings'},
       {id:'succession',title:'Succession & Dev',icon:'🪜',group:'Talent',status:'na',sub:'Talent review, 9-box'},
       {id:'onboarding',title:'Onboarding',icon:'📝',group:'Talent',status:'na',sub:'New-hire journeys'},
       {id:'learning',title:'Learning (LMS)',icon:'🎓',group:'Operations',status:'na',sub:'Courses & certifications'},
@@ -355,6 +355,17 @@
       }catch(e){main.innerHTML=moduleHead('Recruiting','')+'<div class="err">Could not load recruiting: '+esc(e.message)+'</div>';}
     }
 
+    /* ---------------- Performance & Goals ---------------- */
+    async function renderPerformance(){
+      crumb.textContent='Performance & Goals';main.innerHTML=moduleHead('Performance & Goals','Performance review forms and ratings')+skeleton();
+      try{
+        const d=await getJSON('/api/performance');const forms=d.forms||[];
+        const note=d.sample?'<div class="note">No review forms for the demo user — showing a sample of sandbox review forms.</div>':'';
+        main.innerHTML=moduleHead('Performance & Goals','Performance review forms and ratings')+note
+          +`<div class="card"><h3>Review forms (${forms.length})</h3><table><thead><tr><th>Form</th><th>Type</th><th>Review period</th><th>Due</th><th>Rating</th></tr></thead><tbody>${forms.length?forms.map(f=>`<tr><td>${esc(f.title)}</td><td>${esc(f.type)}</td><td>${esc(f.period)}</td><td>${esc(f.due)}</td><td class="num">${f.rated&&f.rating?esc(f.rating):'—'}</td></tr>`).join(''):'<tr><td colspan="5" style="color:var(--ink-soft)">No review forms.</td></tr>'}</tbody></table></div>`;
+      }catch(e){main.innerHTML=moduleHead('Performance & Goals','')+'<div class="err">Could not load performance: '+esc(e.message)+'</div>';}
+    }
+
     /* ---------------- Stub modules ---------------- */
     function renderStub(m){
       crumb.textContent=m.title;
@@ -366,7 +377,7 @@
     }
 
     /* ---------------- Router ---------------- */
-    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting};
+    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting,performance:renderPerformance};
     function route(){
       const id=(location.hash.replace(/^#\/?/,'')||'').trim();
       window.scrollTo(0,0);

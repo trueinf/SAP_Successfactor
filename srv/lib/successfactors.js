@@ -396,7 +396,31 @@ async function getRecruiting() {
   return { requisitions, candidates }
 }
 
+// ---- Module: Performance & Goals (review forms) ----------------------------
+
+async function getPerformance(userId) {
+  if (MODE === 'mock') {
+    return { sample: false, forms: [
+      { id: '1', title: 'Annual Review 2026', type: 'Review', period: '2026-01-01 → 2026-12-31', due: '2026-12-15', rated: true, rating: 4.2 },
+      { id: '2', title: 'Mid-Year Check-in', type: 'Review', period: '2026-01-01 → 2026-06-30', due: '2026-07-10', rated: false, rating: null },
+    ] }
+  }
+  let rows = await sfGet(`FormHeader?$filter=formSubjectId eq '${userId}'&$top=20&$format=json`)
+  let sample = false
+  if (!rows.length) { rows = await sfGet(`FormHeader?$top=12&$format=json`); sample = true }
+  const forms = rows.map((r) => ({
+    id: r.formDataId,
+    title: r.formTitle || `${r.formTemplateType || 'Form'}${r.formSubjectId ? ' · ' + r.formSubjectId : ''}`,
+    type: r.formTemplateType || '—',
+    period: [parseSfDate(r.formReviewStartDate), parseSfDate(r.formReviewEndDate)].filter(Boolean).join(' → ') || '—',
+    due: parseSfDate(r.formReviewDueDate) || '—',
+    rated: Boolean(r.isRated) && String(r.isRated) !== 'false',
+    rating: r.rating != null ? Number(r.rating) : null,
+  }))
+  return { forms, sample }
+}
+
 module.exports = {
   getLeaveBalances, getLeaveHistory, submitLeave, sfInfo,
-  getProfile, getPay, getOrg, getRecruiting,
+  getProfile, getPay, getOrg, getRecruiting, getPerformance,
 }
