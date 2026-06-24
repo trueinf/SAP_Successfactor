@@ -279,6 +279,7 @@
       {id:'payroll',title:'Payroll',icon:'🧾',group:'Operations',status:'live',sub:'Pay statements & runs'},
       {id:'analytics',title:'People Analytics',icon:'📊',group:'Operations',status:'na',sub:'Workforce dashboards'},
       {id:'talent',title:'Talent Intelligence',icon:'🧠',group:'Operations',status:'na',sub:'Skills & AI matching'},
+      {id:'zapier',title:'Live from Zapier',icon:'⚡',group:'Operations',status:'live',sub:'SuccessFactors data pushed in via Zapier'},
     ];
     const STATUS_BADGE={live:['tb-live','Live data'],demo:['tb-demo','Demo data'],na:['tb-na','Requires module']};
     const FEATURES={
@@ -425,6 +426,28 @@
       }catch(e){main.innerHTML=moduleHead('Payroll','')+'<div class="err">Could not load payroll: '+esc(e.message)+'</div>';}
     }
 
+    /* ---------------- Live from Zapier ---------------- */
+    async function renderZapier(){
+      crumb.textContent='Live from Zapier';
+      main.innerHTML=moduleHead('Live from Zapier','Real SuccessFactors data pushed into this app by a Zapier automation','<button class="btn-primary" id="zrefresh">↻ Refresh</button>')
+        +'<div id="zbox" class="card">Loading…</div>';
+      document.getElementById('zrefresh').addEventListener('click',renderZapier);
+      try{
+        const d=await getJSON('/api/ingest');
+        const box=document.getElementById('zbox');
+        if(!d||!d.payload){
+          box.innerHTML='<div class="note">No data pushed yet. In your Zap, add a <b>Webhooks by Zapier → POST</b> step that sends the SuccessFactors response to <code>/api/ingest</code> with header <code>X-Ingest-Token</code>. Then click Refresh. <br><br>(Inbound push works on the BTP deployment even though the trial blocks outbound — Zapier reaches SuccessFactors for you.)</div>';
+          return;
+        }
+        const when=d.receivedAt?new Date(d.receivedAt).toLocaleString():'—';
+        box.innerHTML='<h3>Latest push from Zapier</h3><p class="sub" style="margin:0 0 .8rem">Received: '+esc(when)+'</p>'
+          +'<pre style="white-space:pre-wrap;word-break:break-word;font-size:.82rem;background:#0b1f3a;color:#dbe7f5;padding:1rem;border-radius:.6rem;overflow:auto;max-height:24rem;margin:0">'+esc(JSON.stringify(d.payload,null,2))+'</pre>';
+      }catch(e){
+        const box=document.getElementById('zbox');
+        if(box) box.innerHTML='<div class="err">Could not load: '+esc(e.message)+'. Live ingest is available on the BTP deployment (stateful single instance).</div>';
+      }
+    }
+
     /* ---------------- Stub modules ---------------- */
     function renderStub(m){
       crumb.textContent=m.title;
@@ -436,7 +459,7 @@
     }
 
     /* ---------------- Router ---------------- */
-    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting,performance:renderPerformance,payroll:renderPayroll};
+    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting,performance:renderPerformance,payroll:renderPayroll,zapier:renderZapier};
     function route(){
       const id=(location.hash.replace(/^#\/?/,'')||'').trim();
       window.scrollTo(0,0);

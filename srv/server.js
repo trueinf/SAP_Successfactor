@@ -13,6 +13,13 @@ const sf = require('./lib/successfactors')
 
 const currentUser = () => process.env.SF_USER_ID || process.env.MOCK_USER_ID || '103189'
 
+// In-memory store for data PUSHED in by a Zapier automation (Zapier → app).
+// This is how Zapier integrates with the app even on the BTP trial: the trial
+// blocks *outbound* calls, but *inbound* POSTs to the app are allowed. Zapier
+// (which can reach SuccessFactors) fetches the data and pushes it here.
+// Note: single-instance in-memory — fine for the CF trial; use a DB for scale.
+let lastIngest = null
+
 // Wrap an async producer into an Express JSON handler.
 const handle = (producer) => async (req, res) => {
   try {
@@ -39,6 +46,18 @@ cds.on('bootstrap', (app) => {
       res.status(502).json({ ok: false, message: err.message })
     }
   })
+
+  // ---- Zapier integration (inbound push) ----
+  // Zapier POSTs SuccessFactors data here; the UI's "Live from Zapier" panel reads it.
+  app.post('/api/ingest', express.json({ type: () => true }), (req, res) => {
+    const token = req.get('X-Ingest-Token')
+    if (process.env.INGEST_TOKEN && token !== process.env.INGEST_TOKEN) {
+      return res.status(401).json({ ok: false, error: 'Invalid or missing X-Ingest-Token' })
+    }
+    lastIngest = { payload: req.body, receivedAt: new Date().toISOString() }
+    res.json({ ok: true, receivedAt: lastIngest.receivedAt })
+  })
+  app.get('/api/ingest', (_req, res) => res.json(lastIngest || { payload: null, receivedAt: null }))
 })
 
 module.exports = require('@sap/cds/server')
