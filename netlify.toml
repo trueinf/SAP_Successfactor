@@ -72,3 +72,9 @@
   to = "/.netlify/functions/performance"
   status = 200
   force = true
+
+[[redirects]]
+  from = "/api/payroll"
+  to = "/.netlify/functions/payroll"
+  status = 200
+  force = true

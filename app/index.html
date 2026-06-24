@@ -228,7 +228,7 @@
       {id:'succession',title:'Succession & Dev',icon:'🪜',group:'Talent',status:'na',sub:'Talent review, 9-box'},
       {id:'onboarding',title:'Onboarding',icon:'📝',group:'Talent',status:'na',sub:'New-hire journeys'},
       {id:'learning',title:'Learning (LMS)',icon:'🎓',group:'Operations',status:'na',sub:'Courses & certifications'},
-      {id:'payroll',title:'Payroll',icon:'🧾',group:'Operations',status:'na',sub:'Payslips & gross-to-net'},
+      {id:'payroll',title:'Payroll',icon:'🧾',group:'Operations',status:'live',sub:'Pay statements & runs'},
       {id:'analytics',title:'People Analytics',icon:'📊',group:'Operations',status:'na',sub:'Workforce dashboards'},
       {id:'talent',title:'Talent Intelligence',icon:'🧠',group:'Operations',status:'na',sub:'Skills & AI matching'},
     ];
@@ -366,6 +366,17 @@
       }catch(e){main.innerHTML=moduleHead('Performance & Goals','')+'<div class="err">Could not load performance: '+esc(e.message)+'</div>';}
     }
 
+    /* ---------------- Payroll ---------------- */
+    async function renderPayroll(){
+      crumb.textContent='Payroll';main.innerHTML=moduleHead('Payroll','Your pay statements and payroll runs')+skeleton();
+      try{
+        const d=await getJSON('/api/payroll');const runs=d.runs||[];
+        const note=d.sample?'<div class="note">No payroll runs for the demo user — showing a sample of sandbox payroll records.</div>':'';
+        main.innerHTML=moduleHead('Payroll','Your pay statements and payroll runs')+note
+          +`<div class="card"><h3>Pay statements (${runs.length})</h3><table><thead><tr><th>Pay date</th><th>Period</th><th>Type</th><th>Currency</th><th>Statement</th></tr></thead><tbody>${runs.length?runs.map(r=>`<tr><td>${esc(r.payDate)}</td><td>${esc(r.period)}</td><td>${esc(r.type)}</td><td>${esc(r.currency)}</td><td>${pill(r.status)}</td></tr>`).join(''):'<tr><td colspan="5" style="color:var(--ink-soft)">No payroll runs.</td></tr>'}</tbody></table></div>`;
+      }catch(e){main.innerHTML=moduleHead('Payroll','')+'<div class="err">Could not load payroll: '+esc(e.message)+'</div>';}
+    }
+
     /* ---------------- Stub modules ---------------- */
     function renderStub(m){
       crumb.textContent=m.title;
@@ -377,7 +388,7 @@
     }
 
     /* ---------------- Router ---------------- */
-    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting,performance:renderPerformance};
+    const RENDER={time:renderTime,profile:renderProfile,pay:renderPay,org:renderOrg,recruiting:renderRecruiting,performance:renderPerformance,payroll:renderPayroll};
     function route(){
       const id=(location.hash.replace(/^#\/?/,'')||'').trim();
       window.scrollTo(0,0);

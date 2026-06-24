@@ -420,7 +420,31 @@ async function getPerformance(userId) {
   return { forms, sample }
 }
 
+// ---- Module: Payroll (pay statements / payroll runs) -----------------------
+
+async function getPayroll(userId) {
+  if (MODE === 'mock') {
+    return { sample: false, runs: [
+      { payDate: '2026-05-31', period: '2026-05-01 → 2026-05-31', type: 'Regular', currency: 'EUR', status: 'AVAILABLE' },
+      { payDate: '2026-04-30', period: '2026-04-01 → 2026-04-30', type: 'Regular', currency: 'EUR', status: 'AVAILABLE' },
+    ] }
+  }
+  let rows = await sfGet(`EmployeePayrollRunResults?$filter=userId eq '${userId}'&$top=20&$format=json`)
+  let sample = false
+  if (!rows.length) { rows = await sfGet(`EmployeePayrollRunResults?$top=12&$format=json`); sample = true }
+  const runs = rows
+    .map((r) => ({
+      payDate: parseSfDate(r.payDate) || '—',
+      period: [parseSfDate(r.startDateWhenPaid), parseSfDate(r.endDateWhenPaid)].filter(Boolean).join(' → ') || '—',
+      type: r.payrollRunType || '—',
+      currency: r.currency || '—',
+      status: r.payStatementAvailability || '—',
+    }))
+    .sort((a, b) => (a.payDate < b.payDate ? 1 : -1))
+  return { runs, sample }
+}
+
 module.exports = {
   getLeaveBalances, getLeaveHistory, submitLeave, sfInfo,
-  getProfile, getPay, getOrg, getRecruiting, getPerformance,
+  getProfile, getPay, getOrg, getRecruiting, getPerformance, getPayroll,
 }
